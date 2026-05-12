@@ -14,11 +14,14 @@ static void ApplyScaleToLayer(CALayer *layer, float scale) {
         // Lấy bounds đúng theo orientation hiện tại
         CGSize screenSize = screen.bounds.size;
 
-        // Tính drawable size theo orientation
-        UIInterfaceOrientation orientation = UIApplication.sharedApplication
-            .windows.firstObject
-            .windowScene
-            .interfaceOrientation;
+        // Tính drawable size theo orientation (dùng UIWindowScene thay vì deprecated .windows)
+        UIInterfaceOrientation orientation = UIInterfaceOrientationUnknown;
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                orientation = ((UIWindowScene *)scene).interfaceOrientation;
+                break;
+            }
+        }
 
         CGFloat width  = screenSize.width;
         CGFloat height = screenSize.height;
@@ -52,8 +55,11 @@ static void ApplyScaleToLayer(CALayer *layer, float scale) {
 // ─── Apply lên toàn bộ windows ────────────────────────────────────────────
 static void ApplyScaleToAllWindows(float scale) {
     dispatch_async(dispatch_get_main_queue(), ^{
-        for (UIWindow *win in UIApplication.sharedApplication.windows) {
-            ApplyScaleToLayer(win.layer, scale);
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            for (UIWindow *win in ((UIWindowScene *)scene).windows) {
+                ApplyScaleToLayer(win.layer, scale);
+            }
         }
     });
 }
