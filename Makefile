@@ -26,7 +26,8 @@ GameOptimizer_FRAMEWORKS = \
 	Metal \
 	QuartzCore \
 	Foundation \
-	MetalFX
+	MetalFX \
+	MetalKit
 
 GameOptimizer_PRIVATE_FRAMEWORKS = \
 	IOKit
@@ -35,12 +36,14 @@ GameOptimizer_CFLAGS = \
 	-fobjc-arc \
 	-O2 \
 	-DIOS_TARGET=1 \
-	-Wall
+	-Wall \
+	-fno-modules \
+	-fno-cxx-modules \
+	-include GameOptimizer-Prefix.pch
 
 GameOptimizer_LDFLAGS = \
 	-lc++
 
-# Không dùng MobileSubstrate — standalone dylib
 GameOptimizer_USE_SUBSTRATE = 0
 
 include $(THEOS)/makefiles/tweak.mk
