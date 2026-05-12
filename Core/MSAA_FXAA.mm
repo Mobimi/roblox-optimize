@@ -116,7 +116,8 @@ static void BuildFXAAPipeline(id<MTLDevice> device, MTLPixelFormat pixelFormat) 
     desc.vertexFunction                        = [lib newFunctionWithName:@"fxaa_vertex"];
     desc.fragmentFunction                      = [lib newFunctionWithName:@"fxaa_fragment"];
     desc.colorAttachments[0].pixelFormat       = pixelFormat;
-    desc.sampleCount                           = 1; // FXAA không dùng MSAA
+    desc.rasterSampleCount                     = 1;
+// FXAA không dùng MSAA
 
     _fxaaPipeline = [device newRenderPipelineStateWithDescriptor:desc error:&err];
     _cachedDevice = device;
