@@ -1,0 +1,9 @@
+Package: com.catyeco.robloxmemaybell
+Name: Roblox Optimize
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Metal render optimizer with scale, MSAA, FXAA, FPS cap, shadow, framebuffer and MetalFX upscaling.
+Maintainer: Catyeco
+Author: Catyeco
+Section: Tweaks
+Depends: firmware (>= 16.0)
