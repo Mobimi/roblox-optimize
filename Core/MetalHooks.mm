@@ -8,13 +8,6 @@
 #import <objc/message.h>
 #import <QuartzCore/CAMetalLayer.h>
 
-// ─── Original IMPs ─────────────────────────────────────────────────────────
-static IMP orig_setDrawableSize      = nil;
-static IMP orig_setSampleCount       = nil;
-static IMP orig_setPixelFormat       = nil;
-static IMP orig_setContentsScale     = nil;
-static IMP orig_newRenderPassDesc    = nil;
-
 // ─── Swizzle helper ────────────────────────────────────────────────────────
 static void SwizzleMethod(Class cls, SEL original, SEL replacement) {
     Method origMethod = class_getInstanceMethod(cls, original);
