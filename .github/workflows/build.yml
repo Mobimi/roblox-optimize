@@ -38,8 +38,6 @@ jobs:
           export ARCHS="arm64 arm64e"
           export TARGET="iphone:clang:16.5:16.0"
           export SDKVERSION=16.5
-          # Fix pthread/module conflict giữa macOS host và iOS SDK
-          export GameOptimizer_CFLAGS="-fobjc-arc -O2 -DIOS_TARGET=1 -Wall -fno-modules -fno-cxx-modules -include GameOptimizer-Prefix.pch"
           gmake package FINALPACKAGE=1 2>&1
         env:
           THEOS: ${{ github.workspace }}/theos
