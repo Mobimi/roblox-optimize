@@ -39,7 +39,8 @@ GameOptimizer_CFLAGS = \
 	-Wall \
 	-fno-modules \
 	-fno-cxx-modules \
-	-include GameOptimizer-Prefix.pch
+	-fno-implicit-modules \
+	-fno-implicit-module-maps
 
 GameOptimizer_LDFLAGS = \
 	-lc++
