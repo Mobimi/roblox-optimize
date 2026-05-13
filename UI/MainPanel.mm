@@ -240,7 +240,7 @@
 
     CGFloat stackW = W - pad*2;
     [_stackView sizeToFit];
-    CGFloat stackH = _stackView.systemLayoutSizeFittingSize(UILayoutFittingCompressedSize).height;
+    CGFloat stackH = [_stackView systemLayoutSizeFittingSize:UILayoutFittingCompressedSize].height;
     _stackView.frame = CGRectMake(pad, 10, stackW, MAX(stackH, H - 66));
 
     _scrollView.contentSize = CGSizeMake(W, stackH + 30);
