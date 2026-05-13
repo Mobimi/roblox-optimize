@@ -1,64 +1,55 @@
-name: Build Roblox Optimize Dylib
+ARCHS = arm64 arm64e
+TARGET = iphone:clang:16.5:16.0
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+include $(THEOS)/makefiles/common.mk
 
-jobs:
-  build:
-    runs-on: macos-latest
+TWEAK_NAME = GameOptimizer
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+GameOptimizer_FILES = \
+	Core/Constructor.mm \
+	Core/MetalHooks.mm \
+	Core/RenderScale.mm \
+	Core/MSAA_FXAA.mm \
+	Core/ShadowPass.mm \
+	Core/Framebuffer.mm \
+	Core/MetalFX.mm \
+	Core/FPSCap.mm \
+	Core/ThreadBoost.mm \
+	Core/Settings.mm \
+	UI/OverlayWindow.mm \
+	UI/MainPanel.mm \
+	UI/SliderCell.mm \
+	UI/ToggleCell.mm
 
-      - name: Install dependencies
-        run: |
-          brew install ldid xz make
+GameOptimizer_FRAMEWORKS = \
+	UIKit \
+	Metal \
+	QuartzCore \
+	Foundation \
+	MetalFX \
+	MetalKit
 
-      - name: Install Theos
-        run: |
-          git clone --recursive https://github.com/theos/theos.git $THEOS
-          cd $THEOS
-          git submodule update --init --recursive
-        env:
-          THEOS: ${{ github.workspace }}/theos
+GameOptimizer_PRIVATE_FRAMEWORKS = \
+	IOKit
 
-      - name: Install iOS SDK
-        run: |
-          git clone --depth=1 https://github.com/theos/sdks.git /tmp/theos-sdks
-          cp -r /tmp/theos-sdks/iPhoneOS16.5.sdk $THEOS/sdks/
-        env:
-          THEOS: ${{ github.workspace }}/theos
+GameOptimizer_CFLAGS = \
+	-fobjc-arc \
+	-O2 \
+	-DIOS_TARGET=1 \
+	-Wall \
+	-fno-modules \
+	-fno-cxx-modules \
+	-fno-implicit-modules \
+	-fno-implicit-module-maps \
+	-ICore
 
-      - name: Clean
-        run: |
-          rm -rf .theos packages
+GameOptimizer_LDFLAGS = \
+	-lc++ \
+	-framework CoreGraphics
 
-      - name: Build Dylib
-        run: |
-          export THEOS=${{ github.workspace }}/theos
-          export ARCHS="arm64 arm64e"
-          export TARGET="iphone:clang:16.5:16.0"
-          export SDKVERSION=16.5
-          gmake package FINALPACKAGE=1 2>&1
-        env:
-          THEOS: ${{ github.workspace }}/theos
+GameOptimizer_USE_SUBSTRATE = 0
 
-      - name: Find output files
-        run: |
-          echo "=== packages/ ==="
-          ls -la packages/ || echo "No packages dir"
-          echo "=== .theos dylib ==="
-          find .theos -name "*.dylib" 2>/dev/null || echo "No dylib found"
+include $(THEOS)/makefiles/tweak.mk
 
-      - name: Upload Dylib
-        uses: actions/upload-artifact@v4
-        with:
-          name: RobloxOptimize-dylib
-          path: |
-            packages/*.deb
-            .theos/obj/**/*.dylib
-          retention-days: 7
-          if-no-files-found: warn
+after-install::
+	install.exec "killall -9 SpringBoard"
