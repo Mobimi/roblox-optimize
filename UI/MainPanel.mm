@@ -5,6 +5,7 @@
 #import "FPSCap.h"
 #import "RenderScale.h"
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 @interface MainPanel ()
 @property (nonatomic, strong) UIScrollView  *scrollView;
