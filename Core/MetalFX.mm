@@ -1,10 +1,11 @@
 #import "MetalFX.h"
 #import "Settings.h"
 #import <Metal/Metal.h>
+#import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <objc/message.h>
 
 // ─── MetalFX framework load động ──────────────────────────────────────────
-// MetalFX chỉ available iOS 16+, load động để tránh crash trên iOS cũ hơn
 static Class  _spatialScalerDescClass = nil;
 static Class  _spatialScalerClass     = nil;
 static BOOL   _metalFXAvailable       = NO;
@@ -12,7 +13,6 @@ static BOOL   _metalFXAvailable       = NO;
 static void LoadMetalFXClasses(void) {
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        // Load framework động
         NSBundle *metalFXBundle = [NSBundle bundleWithPath:
             @"/System/Library/Frameworks/MetalFX.framework"];
         if ([metalFXBundle load]) {
@@ -32,34 +32,43 @@ static void LoadMetalFXClasses(void) {
 // ─── Input/Output resolution theo quality ─────────────────────────────────
 static float GetInputScale(MetalFXQuality quality) {
     switch (quality) {
-        case MetalFXQualityPerformance: return 0.5f;  // render 50% → upscale 2x
-        case MetalFXQualityBalanced:    return 0.667f; // render 67% → upscale 1.5x
-        case MetalFXQualityQuality:     return 0.77f;  // render 77% → upscale 1.3x
+        case MetalFXQualityPerformance: return 0.5f;
+        case MetalFXQualityBalanced:    return 0.667f;
+        case MetalFXQualityQuality:     return 0.77f;
         default:                        return 0.667f;
     }
 }
 
 // ─── MetalFX Scaler state ──────────────────────────────────────────────────
-static id  _spatialScaler  = nil;
-static id<MTLTexture> _inputTexture  = nil;
-static id<MTLTexture> _outputTexture = nil;
-static id<MTLDevice>  _metalFXDevice = nil;
+static id             _spatialScaler  = nil;
+static id<MTLTexture> _inputTexture   = nil;
+static id<MTLTexture> _outputTexture  = nil;
+static id<MTLDevice>  _metalFXDevice  = nil;
 
 static BOOL BuildSpatialScaler(id<MTLDevice> device) {
     if (!_metalFXAvailable) return NO;
     if (_spatialScaler && _metalFXDevice == device) return YES;
 
-    MetalFXQuality quality = [Settings metalFXQuality];
-    float inputScale = GetInputScale(quality);
+    MetalFXQuality quality   = [Settings metalFXQuality];
+    float inputScale         = GetInputScale(quality);
+    float renderScale        = [Settings renderScale];
 
-    UIScreen *screen   = UIScreen.mainScreen;
-    float renderScale  = [Settings renderScale];
-    NSUInteger outW    = (NSUInteger)(screen.bounds.size.width  * renderScale);
-    NSUInteger outH    = (NSUInteger)(screen.bounds.size.height * renderScale);
-    NSUInteger inW     = (NSUInteger)(outW * inputScale);
-    NSUInteger inH     = (NSUInteger)(outH * inputScale);
+    // Lấy screen size qua UIWindowScene thay vì UIScreen deprecated
+    CGSize screenSize = CGSizeMake(390, 844); // fallback iPhone 12 Pro Max
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            UIWindowScene *ws = (UIWindowScene *)scene;
+            screenSize = ws.screen.bounds.size;
+            break;
+        }
+    }
 
-    // Build descriptor qua runtime để tránh compile-time dependency
+    NSUInteger outW = (NSUInteger)(screenSize.width  * renderScale);
+    NSUInteger outH = (NSUInteger)(screenSize.height * renderScale);
+    NSUInteger inW  = (NSUInteger)(outW * inputScale);
+    NSUInteger inH  = (NSUInteger)(outH * inputScale);
+
+    // Build descriptor qua runtime
     id desc = [_spatialScalerDescClass new];
     if (!desc) return NO;
 
@@ -70,28 +79,31 @@ static BOOL BuildSpatialScaler(id<MTLDevice> device) {
     [desc setValue:@(MTLPixelFormatBGRA8Unorm) forKey:@"colorTextureFormat"];
     [desc setValue:@(MTLPixelFormatBGRA8Unorm) forKey:@"outputTextureFormat"];
 
-    // Tạo scaler
-    _spatialScaler = [desc newSpatialScalerWithDevice:device];
+    // Tạo scaler qua performSelector thay vì direct call
+    SEL scalerSel = NSSelectorFromString(@"newSpatialScalerWithDevice:");
+    if (![desc respondsToSelector:scalerSel]) {
+        NSLog(@"[GameOptimizer] MetalFX: newSpatialScalerWithDevice not found");
+        return NO;
+    }
+    _spatialScaler = ((id(*)(id,SEL,id))objc_msgSend)(desc, scalerSel, device);
     if (!_spatialScaler) {
         NSLog(@"[GameOptimizer] MetalFX: Failed to create spatial scaler");
         return NO;
     }
 
-    // Tạo input texture (render vào đây)
+    // Input texture
     MTLTextureDescriptor *inDesc = [MTLTextureDescriptor
         texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
         width:inW height:inH mipmapped:NO];
-    inDesc.usage       = MTLTextureUsageRenderTarget |
-                         MTLTextureUsageShaderRead;
+    inDesc.usage       = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
     inDesc.storageMode = MTLStorageModePrivate;
     _inputTexture      = [device newTextureWithDescriptor:inDesc];
 
-    // Tạo output texture (upscaled result)
+    // Output texture
     MTLTextureDescriptor *outDesc = [MTLTextureDescriptor
         texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
         width:outW height:outH mipmapped:NO];
-    outDesc.usage       = MTLTextureUsageShaderWrite |
-                          MTLTextureUsageShaderRead;
+    outDesc.usage       = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
     outDesc.storageMode = MTLStorageModePrivate;
     _outputTexture      = [device newTextureWithDescriptor:outDesc];
 
@@ -116,13 +128,10 @@ static BOOL BuildSpatialScaler(id<MTLDevice> device) {
 - (void)mfx_presentDrawable:(id<MTLDrawable>)drawable {
     if ([Settings metalFXEnabled] && _spatialScaler && _outputTexture) {
         @try {
-            // Encode upscale pass trước khi present
             [_spatialScaler setValue:_inputTexture  forKey:@"colorTexture"];
             [_spatialScaler setValue:_outputTexture forKey:@"outputTexture"];
 
-            // encode vào command buffer hiện tại
-            SEL encodeSel = NSSelectorFromString(
-                @"encodeToCommandBuffer:");
+            SEL encodeSel = NSSelectorFromString(@"encodeToCommandBuffer:");
             if ([_spatialScaler respondsToSelector:encodeSel]) {
                 ((void(*)(id,SEL,id))objc_msgSend)(
                     _spatialScaler, encodeSel, self);
@@ -131,7 +140,7 @@ static BOOL BuildSpatialScaler(id<MTLDevice> device) {
             NSLog(@"[GameOptimizer] MetalFX encode error: %@", e);
         }
     }
-    [self mfx_presentDrawable:drawable]; // original
+    [self mfx_presentDrawable:drawable];
 }
 
 @end
@@ -145,7 +154,6 @@ static BOOL BuildSpatialScaler(id<MTLDevice> device) {
 
     if (!enabled) return;
 
-    // Load MetalFX classes
     LoadMetalFXClasses();
 
     if (!_metalFXAvailable) {
@@ -162,7 +170,6 @@ static BOOL BuildSpatialScaler(id<MTLDevice> device) {
 
             if (!BuildSpatialScaler(device)) return;
 
-            // Hook command buffer present
             NSArray *classNames = @[
                 @"_MTLCommandBuffer",
                 @"MTLCommandBufferInternal",
