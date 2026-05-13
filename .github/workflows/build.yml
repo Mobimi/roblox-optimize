@@ -32,6 +32,10 @@ jobs:
         env:
           THEOS: ${{ github.workspace }}/theos
 
+      - name: Clean
+        run: |
+          rm -rf .theos packages
+
       - name: Build Dylib
         run: |
           export THEOS=${{ github.workspace }}/theos
