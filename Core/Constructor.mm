@@ -1,6 +1,5 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import <Metal/Metal.h>
 #import "Settings.h"
 #import "MetalHooks.h"
 #import "RenderScale.h"
@@ -12,31 +11,62 @@
 #import "ThreadBoost.h"
 #import "../UI/OverlayWindow.h"
 
-// ─── Chạy ngay khi dylib được load vào process game ───────────────────────
+// ─── Debug log ghi ra Documents ───────────────────────────────────────────
+static NSString *_logPath = nil;
+
+static void InitLogFile(void) {
+    NSString *docs = NSSearchPathForDirectoriesInDomains(
+        NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    _logPath = [docs stringByAppendingPathComponent:@"GameOptimizer.log"];
+    [@"" writeToFile:_logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
+
+static void GOLog(NSString *format, ...) {
+    va_list args;
+    va_start(args, format);
+    NSString *msg = [[NSString alloc] initWithFormat:format arguments:args];
+    va_end(args);
+
+    NSString *line = [NSString stringWithFormat:@"[%@] %@\n",
+        [NSDate date], msg];
+
+    NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:_logPath];
+    if (!fh) {
+        [line writeToFile:_logPath atomically:YES
+               encoding:NSUTF8StringEncoding error:nil];
+    } else {
+        [fh seekToEndOfFile];
+        [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]];
+        [fh closeFile];
+    }
+
+    NSLog(@"[GameOptimizer] %@", msg);
+}
+
+// ─── Safe wrapper ──────────────────────────────────────────────────────────
+static void SafeApply(NSString *name, void(^block)(void)) {
+    @try {
+        block();
+        GOLog(@"✓ %@ OK", name);
+    } @catch (NSException *e) {
+        GOLog(@"✗ %@ EXCEPTION: %@ — %@", name, e.name, e.reason);
+    } @catch (...) {
+        GOLog(@"✗ %@ UNKNOWN CRASH", name);
+    }
+}
+
+// ─── Entry point ──────────────────────────────────────────────────────────
 __attribute__((constructor))
 static void GameOptimizerInit(void) {
-    // Đảm bảo chỉ init 1 lần
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        NSLog(@"[GameOptimizer] Dylib loaded into process: %@",
+
+        InitLogFile();
+        GOLog(@"=== GameOptimizer loaded into: %@ ===",
               [[NSBundle mainBundle] bundleIdentifier]);
 
-        // 1. Load settings từ UserDefaults trước tiên
-        [Settings load];
-
-        // 2. Apply các tính năng cần thiết ngay khi khởi động
-        //    (trước khi game init Metal pipeline)
-        [ThreadBoost apply];   // Boost thread priority ngay lập tức
-        [FPSCap apply];        // Set FPS cap
-        [RenderScale apply];   // Apply render scale
-        [MSAA_FXAA apply];     // MSAA off / FXAA
-        [ShadowPass apply];    // Shadow toggle
-        [Framebuffer apply];   // Framebuffer format
-        [MetalFXModule apply]; // MetalFX upscaling
-        [MetalHooks install];  // Hook Metal pipeline
-
-        NSLog(@"[GameOptimizer] All modules applied");
-        NSLog(@"[GameOptimizer] Settings: scale=%.2f fps=%ld msaa=%d fxaa=%d shadow=%d framebuffer=%d metalfx=%d thread=%d",
+        SafeApply(@"Settings.load", ^{ [Settings load]; });
+        GOLog(@"Scale=%.2f FPS=%ld MSAA=%d FXAA=%d Shadow=%d FB=%d MFX=%d Thread=%d",
               [Settings renderScale],
               (long)[Settings fpsCap],
               [Settings msaaEnabled],
@@ -46,21 +76,30 @@ static void GameOptimizerInit(void) {
               [Settings metalFXEnabled],
               [Settings threadBoostEnabled]);
 
-        // 3. Show overlay UI sau khi app đã fully launch
+        SafeApply(@"ThreadBoost",  ^{ [ThreadBoost apply]; });
+        SafeApply(@"FPSCap",       ^{ [FPSCap apply]; });
+        SafeApply(@"RenderScale",  ^{ [RenderScale apply]; });
+        SafeApply(@"MSAA_FXAA",    ^{ [MSAA_FXAA apply]; });
+        SafeApply(@"ShadowPass",   ^{ [ShadowPass apply]; });
+        SafeApply(@"Framebuffer",  ^{ [Framebuffer apply]; });
+        SafeApply(@"MetalFX",      ^{ [MetalFXModule apply]; });
+        SafeApply(@"MetalHooks",   ^{ [MetalHooks install]; });
+
+        GOLog(@"=== All modules done — waiting for UI ===");
+
         dispatch_after(
             dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)),
             dispatch_get_main_queue(),
             ^{
-                [OverlayWindow show];
-                NSLog(@"[GameOptimizer] Overlay UI shown");
+                SafeApply(@"OverlayWindow", ^{ [OverlayWindow show]; });
+                GOLog(@"=== Overlay shown ===");
             }
         );
     });
 }
 
-// ─── Cleanup khi dylib unload ──────────────────────────────────────────────
 __attribute__((destructor))
 static void GameOptimizerDeinit(void) {
-    NSLog(@"[GameOptimizer] Dylib unloaded");
-    [Settings save];
+    GOLog(@"=== GameOptimizer unloaded ===");
+    SafeApply(@"Settings.save", ^{ [Settings save]; });
 }
