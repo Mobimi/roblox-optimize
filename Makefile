@@ -40,7 +40,8 @@ GameOptimizer_CFLAGS = \
 	-fno-modules \
 	-fno-cxx-modules \
 	-fno-implicit-modules \
-	-fno-implicit-module-maps
+	-fno-implicit-module-maps \
+	-ICore
 
 GameOptimizer_LDFLAGS = \
 	-lc++
