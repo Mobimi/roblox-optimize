@@ -58,7 +58,6 @@ jobs:
         with:
           name: RobloxOptimize-dylib
           path: |
-            packages/*.deb
             .theos/obj/**/*.dylib
           retention-days: 7
           if-no-files-found: warn
