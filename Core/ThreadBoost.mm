@@ -31,7 +31,7 @@
 
     if (isRenderThread && [Settings threadBoostEnabled]) {
         // Boost lên QOS_CLASS_USER_INTERACTIVE — cao nhất
-        pthread_t pt = self.value ? (__bridge pthread_t)self.value : pthread_self();
+        pthread_t pt = pthread_self();
         struct sched_param param;
         param.sched_priority = sched_get_priority_max(SCHED_FIFO);
         pthread_setschedparam(pt, SCHED_FIFO, &param);
