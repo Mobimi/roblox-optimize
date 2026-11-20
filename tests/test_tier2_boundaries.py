@@ -399,6 +399,12 @@ class TestB7TouchPassthroughBoundaries(unittest.TestCase):
         self.assertIn("[self.menuViewController dismissMenu];", self.window_m)
         self.assertIn("return nil;", self.window_m)
 
+    def test_b7_07_presented_alert_touch_does_not_dismiss_menu(self):
+        """Verify touch inside a presented alert view controller returns hitView without dismissing menu."""
+        self.assertIn("UIViewController *presentedVC =", self.window_m)
+        self.assertIn("if (presentedVC) {", self.window_m)
+        self.assertIn("return hitView;", self.window_m)
+
 
 class TestB8PresetModelCorruptionBoundaries(unittest.TestCase):
     """B8: Configuration Model Corruption & Edge Fallbacks."""

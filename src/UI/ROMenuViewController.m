@@ -46,6 +46,17 @@
     } completion:nil];
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    // Keep dialogCard blur view frame strictly matched with dialogCard bounds across all layout changes and rotations
+    for (UIView *subview in self.dialogCard.subviews) {
+        if ([subview isKindOfClass:[UIVisualEffectView class]]) {
+            subview.frame = self.dialogCard.bounds;
+            break;
+        }
+    }
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self setupViewHierarchy];

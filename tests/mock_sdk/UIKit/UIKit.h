@@ -199,6 +199,7 @@ static NSString * const UIApplicationDidFinishLaunchingNotification = @"UIApplic
 - (void)removeFromSuperview;
 - (void)addGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 - (nullable UIView *)hitTest:(CGPoint)point withEvent:(nullable UIEvent *)event;
+- (BOOL)isDescendantOfView:(UIView *)view;
 
 + (void)animateWithDuration:(double)duration animations:(void (^)(void))animations;
 + (void)animateWithDuration:(double)duration animations:(void (^)(void))animations completion:(nullable void (^)(BOOL finished))completion;
@@ -218,19 +219,31 @@ static NSString * const UIApplicationDidFinishLaunchingNotification = @"UIApplic
 @interface UIWindowScene : UIScene
 @end
 
+@protocol UIViewControllerTransitionCoordinatorContext <NSObject>
+@end
+
+@protocol UIViewControllerTransitionCoordinator <NSObject>
+- (BOOL)animateAlongsideTransition:(void (^ _Nullable)(id <UIViewControllerTransitionCoordinatorContext> context))animation
+                        completion:(void (^ _Nullable)(id <UIViewControllerTransitionCoordinatorContext> context))completion;
+@end
+
 @interface UIViewController : NSObject
 - (instancetype)initWithNibName:(nullable NSString *)nibNameOrNil bundle:(nullable NSBundle *)nibBundleOrNil;
 @property (null_resettable, nonatomic, strong) UIView *view;
 - (void)viewDidLoad;
+- (void)viewDidLayoutSubviews;
 @property (nonatomic, readonly) BOOL shouldAutorotate;
 @property (nonatomic, readonly) UIInterfaceOrientationMask supportedInterfaceOrientations;
 @property (nonatomic, readonly) BOOL prefersStatusBarHidden;
+@property (nonatomic, readonly, nullable) UIViewController *presentedViewController;
+@property (nonatomic, readonly, nullable) UIViewController *presentingViewController;
 
 - (void)addChildViewController:(UIViewController *)childController;
 - (void)removeFromParentViewController;
 - (void)didMoveToParentViewController:(nullable UIViewController *)parent;
 - (void)willMoveToParentViewController:(nullable UIViewController *)parent;
 - (void)presentViewController:(UIViewController *)viewControllerToPresent animated:(BOOL)flag completion:(nullable void (^)(void))completion;
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator;
 @end
 
 @interface UIWindow : UIView

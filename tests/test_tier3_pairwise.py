@@ -296,6 +296,16 @@ class TestPairwiseUIAndInteraction(unittest.TestCase):
         self.assertIn("constraintEqualToAnchor:self.view.centerXAnchor", menu_m)
         self.assertIn("constraintEqualToAnchor:self.view.centerYAnchor", menu_m)
 
+    def test_p13c_alert_presentation_and_hittest_isolation(self):
+        """Verify presented alert controllers in menu retain user interaction without triggering menu dismissal."""
+        window_m = (SRC_DIR / "UI" / "ROPassThroughWindow.m").read_text(encoding="utf-8")
+        menu_m = (SRC_DIR / "UI" / "ROMenuViewController.m").read_text(encoding="utf-8")
+
+        self.assertIn("presentViewController:alert animated:YES", menu_m)
+        self.assertIn("presentViewController:exitAlert animated:YES", menu_m)
+        self.assertIn("presentedViewController", window_m)
+        self.assertIn("if (presentedVC) {", window_m)
+
     def test_p14_resolution_input_validation_and_model_persistence(self):
         """Valid resolution input ('0.75') is stored to config and saved."""
         menu_m = (SRC_DIR / "UI" / "ROMenuViewController.m").read_text(encoding="utf-8")

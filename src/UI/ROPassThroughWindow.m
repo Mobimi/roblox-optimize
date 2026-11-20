@@ -164,10 +164,22 @@
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
     UIView *hitView = [super hitTest:point withEvent:event];
+
+    if (self.menuViewController) {
+        UIViewController *presentedVC = self.menuViewController.presentedViewController ?: self.rootViewController.presentedViewController;
+        if (presentedVC && (hitView == presentedVC.view || [hitView isDescendantOfView:presentedVC.view])) {
+            return hitView;
+        }
+    }
+
     // If the touch lands on the window itself or on the root transparent view,
     // return nil so that touches pass through seamlessly to the underlying game.
     if (hitView == self || hitView == self.rootViewController.view) {
         if (self.menuViewController) {
+            UIViewController *presentedVC = self.menuViewController.presentedViewController ?: self.rootViewController.presentedViewController;
+            if (presentedVC) {
+                return hitView;
+            }
             [self.menuViewController dismissMenu];
         }
         return nil;
@@ -180,6 +192,10 @@
             ![hitView isDescendantOfView:card] &&
             hitView != self.floatingButton &&
             ![hitView isDescendantOfView:self.floatingButton]) {
+            UIViewController *presentedVC = self.menuViewController.presentedViewController ?: self.rootViewController.presentedViewController;
+            if (presentedVC) {
+                return hitView;
+            }
             [self.menuViewController dismissMenu];
             return nil;
         }
