@@ -74,6 +74,23 @@
             [weakWindow toggleMenu];
         };
 
+        if (@available(iOS 13.0, *)) {
+            if (!sharedInstance.windowScene) {
+                // If scene was not yet foreground active, attach dynamically upon scene activation
+                [[NSNotificationCenter defaultCenter] addObserverForName:UISceneDidActivateNotification
+                                                                  object:nil
+                                                                   queue:[NSOperationQueue mainQueue]
+                                                              usingBlock:^(NSNotification *note) {
+                    if (@available(iOS 13.0, *)) {
+                        if ([note.object isKindOfClass:[UIWindowScene class]] && !sharedInstance.windowScene) {
+                            sharedInstance.windowScene = (UIWindowScene *)note.object;
+                            sharedInstance.hidden = NO;
+                        }
+                    }
+                }];
+            }
+        }
+
         sharedInstance.hidden = NO;
     });
     return sharedInstance;
@@ -86,6 +103,17 @@
 }
 
 - (void)toggleMenu {
+    if (@available(iOS 13.0, *)) {
+        if (!self.windowScene) {
+            for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+                if (scene.activationState == UISceneActivationStateForegroundActive &&
+                    [scene isKindOfClass:[UIWindowScene class]]) {
+                    self.windowScene = (UIWindowScene *)scene;
+                    break;
+                }
+            }
+        }
+    }
     if (self.menuViewController) {
         [self.menuViewController dismissMenu];
     } else {

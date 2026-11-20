@@ -25,17 +25,36 @@
 }
 
 - (void)setupUI {
-    self.backgroundColor = [UIColor colorWithRed:0.12 green:0.16 blue:0.23 alpha:0.85]; // Slate dark
+    self.backgroundColor = [UIColor clearColor];
     self.layer.cornerRadius = self.bounds.size.width / 2.0;
     self.layer.masksToBounds = NO;
     self.layer.borderColor = [UIColor colorWithRed:0.23 green:0.51 blue:0.96 alpha:0.90].CGColor; // Blue accent
     self.layer.borderWidth = 1.5;
 
-    // Drop shadow
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.layer.shadowOpacity = 0.45;
-    self.layer.shadowOffset = CGSizeMake(0, 3);
-    self.layer.shadowRadius = 5.0;
+    // Refined drop shadow & ambient glow
+    self.layer.shadowColor = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.55].CGColor;
+    self.layer.shadowOpacity = 0.55;
+    self.layer.shadowOffset = CGSizeMake(0, 4);
+    self.layer.shadowRadius = 8.0;
+
+    // Modern Frosted Glass Blur Background
+    UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    blurView.frame = self.bounds;
+    blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    blurView.layer.cornerRadius = self.bounds.size.width / 2.0;
+    blurView.layer.masksToBounds = YES;
+    blurView.userInteractionEnabled = NO;
+    [self addSubview:blurView];
+
+    // Translucent dark tint overlay inside blur view
+    UIView *tintView = [[UIView alloc] initWithFrame:self.bounds];
+    tintView.backgroundColor = [UIColor colorWithRed:0.12 green:0.16 blue:0.23 alpha:0.65];
+    tintView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    tintView.layer.cornerRadius = self.bounds.size.width / 2.0;
+    tintView.layer.masksToBounds = YES;
+    tintView.userInteractionEnabled = NO;
+    [blurView.contentView addSubview:tintView];
 
     self.iconLabel = [[UILabel alloc] initWithFrame:self.bounds];
     self.iconLabel.text = @"⚡";
@@ -56,6 +75,13 @@
 - (void)handleTap:(UITapGestureRecognizer *)gesture {
     (void)gesture;
     if (self.isDragging) return;
+    if (@available(iOS 10.0, *)) {
+        if ([UIImpactFeedbackGenerator class]) {
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+            [feedback prepare];
+            [feedback impactOccurred];
+        }
+    }
     if (self.tapHandler) {
         self.tapHandler();
     }
@@ -67,6 +93,13 @@
 
     if (pan.state == UIGestureRecognizerStateBegan) {
         self.isDragging = YES;
+        if (@available(iOS 10.0, *)) {
+            if ([UIImpactFeedbackGenerator class]) {
+                UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+                [feedback prepare];
+                [feedback impactOccurred];
+            }
+        }
         [UIView animateWithDuration:0.15 animations:^{
             self.transform = CGAffineTransformMakeScale(1.10, 1.10);
         }];
@@ -103,6 +136,12 @@
         } completion:^(BOOL finished) {
             (void)finished;
             self.isDragging = NO;
+            if (@available(iOS 10.0, *)) {
+                if ([UIImpactFeedbackGenerator class]) {
+                    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+                    [feedback impactOccurred];
+                }
+            }
         }];
     }
 }

@@ -56,7 +56,11 @@ static void hooked_setContentScaleFactor(UIView *self, SEL _cmd, CGFloat factor)
     if ([self.layer isKindOfClass:[CAMetalLayer class]]) {
         isMetalView = YES;
     } else {
-        Class mtkViewClass = NSClassFromString(@"MTKView");
+        static Class mtkViewClass = nil;
+        static dispatch_once_t mtkToken;
+        dispatch_once(&mtkToken, ^{
+            mtkViewClass = NSClassFromString(@"MTKView");
+        });
         if (mtkViewClass && [self isKindOfClass:mtkViewClass]) {
             isMetalView = YES;
         }

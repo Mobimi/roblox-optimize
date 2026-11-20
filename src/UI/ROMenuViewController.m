@@ -12,16 +12,9 @@
 
 @interface ROMenuViewController () <UITextFieldDelegate>
 
-@property (nonatomic, strong) UIView *dialogCard;
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
-@property (nonatomic, strong) UISegmentedControl *presetControl;
 @property (nonatomic, strong) UIView *subControlsContainer;
-@property (nonatomic, strong) UITextField *scaleTextField;
-@property (nonatomic, strong) UISwitch *textureClampingSwitch;
-@property (nonatomic, strong) UISwitch *shadowsSwitch;
-@property (nonatomic, strong) UISwitch *postFxSwitch;
-@property (nonatomic, strong) UISegmentedControl *fpsControl;
 @property (nonatomic, strong) UIButton *saveExitButton;
 @property (nonatomic, strong) UIButton *closeButton;
 
@@ -38,11 +31,18 @@
 - (void)setupViewHierarchy {
     self.view.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.55];
 
+    // Modern blur backdrop for gameplay immersion
+    UIBlurEffect *backdropBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
+    UIVisualEffectView *backdropBlurView = [[UIVisualEffectView alloc] initWithEffect:backdropBlur];
+    backdropBlurView.frame = self.view.bounds;
+    backdropBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:backdropBlurView];
+
     // Tap backdrop outside the dialog card to dismiss
     UITapGestureRecognizer *backdropTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(closeTapped)];
     [self.view addGestureRecognizer:backdropTap];
 
-    // Dialog card
+    // Dialog card with frosted glass styling and rounded corners
     self.dialogCard = [[UIView alloc] init];
     self.dialogCard.backgroundColor = [UIColor colorWithRed:0.07 green:0.10 blue:0.16 alpha:0.96]; // #111827
     self.dialogCard.layer.cornerRadius = 16.0;
@@ -51,6 +51,14 @@
     self.dialogCard.layer.masksToBounds = YES;
     self.dialogCard.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.dialogCard];
+
+    // Dialog card frosted glass blur effect
+    UIBlurEffect *cardBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
+    UIVisualEffectView *cardBlurView = [[UIVisualEffectView alloc] initWithEffect:cardBlur];
+    cardBlurView.frame = self.dialogCard.bounds;
+    cardBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    cardBlurView.userInteractionEnabled = NO;
+    [self.dialogCard addSubview:cardBlurView];
 
     // Card tap recognizer absorbs taps so card touches don't trigger backdropTap
     UITapGestureRecognizer *cardTap = [[UITapGestureRecognizer alloc] initWithTarget:nil action:nil];
@@ -91,13 +99,21 @@
     self.subControlsContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.subControlsContainer];
 
-    // 1. Resolution Scale Row
+    // 1. Resolution Scale Row (Slider & Textfield)
     UILabel *scaleLabel = [[UILabel alloc] init];
     scaleLabel.text = @"Resolution Scale:";
     scaleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
     scaleLabel.textColor = [UIColor whiteColor];
     scaleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:scaleLabel];
+
+    self.scaleSlider = [[UISlider alloc] init];
+    self.scaleSlider.minimumValue = 0.25f;
+    self.scaleSlider.maximumValue = 3.0f;
+    self.scaleSlider.minimumTrackTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
+    [self.scaleSlider addTarget:self action:@selector(sliderValueChanged:) forControlEvents:UIControlEventValueChanged];
+    self.scaleSlider.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.subControlsContainer addSubview:self.scaleSlider];
 
     self.scaleTextField = [[UITextField alloc] init];
     self.scaleTextField.borderStyle = UITextBorderStyleRoundedRect;
@@ -127,6 +143,7 @@
 
     self.textureClampingSwitch = [[UISwitch alloc] init];
     self.textureClampingSwitch.onTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
+    [self.textureClampingSwitch addTarget:self action:@selector(toggleChanged:) forControlEvents:UIControlEventValueChanged];
     self.textureClampingSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.textureClampingSwitch];
 
@@ -140,6 +157,7 @@
 
     self.shadowsSwitch = [[UISwitch alloc] init];
     self.shadowsSwitch.onTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
+    [self.shadowsSwitch addTarget:self action:@selector(toggleChanged:) forControlEvents:UIControlEventValueChanged];
     self.shadowsSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.shadowsSwitch];
 
@@ -153,6 +171,7 @@
 
     self.postFxSwitch = [[UISwitch alloc] init];
     self.postFxSwitch.onTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
+    [self.postFxSwitch addTarget:self action:@selector(toggleChanged:) forControlEvents:UIControlEventValueChanged];
     self.postFxSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.postFxSwitch];
 
@@ -168,6 +187,7 @@
     self.fpsControl.selectedSegmentTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
     [self.fpsControl setTitleTextAttributes:attr forState:UIControlStateNormal];
     [self.fpsControl setTitleTextAttributes:attr forState:UIControlStateSelected];
+    [self.fpsControl addTarget:self action:@selector(fpsChanged:) forControlEvents:UIControlEventValueChanged];
     self.fpsControl.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.fpsControl];
 
@@ -223,12 +243,15 @@
         [self.subControlsContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
         [self.subControlsContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
 
-        // Scale row
+        // Scale row (slider & textfield)
         [scaleLabel.topAnchor constraintEqualToAnchor:self.subControlsContainer.topAnchor constant:8],
         [scaleLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
+        [self.scaleSlider.centerYAnchor constraintEqualToAnchor:scaleLabel.centerYAnchor],
+        [self.scaleSlider.leadingAnchor constraintEqualToAnchor:scaleLabel.trailingAnchor constant:8],
+        [self.scaleSlider.trailingAnchor constraintEqualToAnchor:self.scaleTextField.leadingAnchor constant:-8],
         [self.scaleTextField.centerYAnchor constraintEqualToAnchor:scaleLabel.centerYAnchor],
         [self.scaleTextField.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.trailingAnchor],
-        [self.scaleTextField.widthAnchor constraintEqualToConstant:85],
+        [self.scaleTextField.widthAnchor constraintEqualToConstant:70],
 
         // Texture Clamping row
         [textureLabel.topAnchor constraintEqualToAnchor:scaleLabel.bottomAnchor constant:14],
@@ -277,7 +300,51 @@
 }
 
 - (void)presetChanged:(UISegmentedControl *)sender {
+    if (@available(iOS 10.0, *)) {
+        if ([UISelectionFeedbackGenerator class]) {
+            UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
+            [feedback selectionChanged];
+        }
+    }
     [self applyPresetUIState:(ROPresetMode)sender.selectedSegmentIndex];
+}
+
+- (void)sliderValueChanged:(UISlider *)sender {
+    float rounded = roundf(sender.value * 100.0f) / 100.0f;
+    self.scaleTextField.text = [NSString stringWithFormat:@"%.2f", (double)rounded];
+    if (@available(iOS 10.0, *)) {
+        if ([UISelectionFeedbackGenerator class]) {
+            UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
+            [feedback selectionChanged];
+        }
+    }
+}
+
+- (void)toggleChanged:(UISwitch *)sender {
+    (void)sender;
+    if (@available(iOS 10.0, *)) {
+        if ([UIImpactFeedbackGenerator class]) {
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+            [feedback impactOccurred];
+        }
+    }
+}
+
+- (void)fpsChanged:(UISegmentedControl *)sender {
+    (void)sender;
+    if (@available(iOS 10.0, *)) {
+        if ([UISelectionFeedbackGenerator class]) {
+            UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
+            [feedback selectionChanged];
+        }
+    }
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField {
+    float val = [textField.text floatValue];
+    if (val >= 0.25f && val <= 3.0f) {
+        self.scaleSlider.value = val;
+    }
 }
 
 - (void)applyPresetUIState:(ROPresetMode)mode {
@@ -287,6 +354,7 @@
         self.subControlsContainer.userInteractionEnabled = NO;
         self.subControlsContainer.alpha = 0.45;
         self.scaleTextField.text = @"0.50";
+        self.scaleSlider.value = 0.50f;
         self.textureClampingSwitch.on = YES;
         self.shadowsSwitch.on = YES;
         self.postFxSwitch.on = YES;
@@ -296,6 +364,7 @@
         self.subControlsContainer.userInteractionEnabled = NO;
         self.subControlsContainer.alpha = 0.45;
         self.scaleTextField.text = @"1.00";
+        self.scaleSlider.value = 1.00f;
         self.textureClampingSwitch.on = YES;
         self.shadowsSwitch.on = YES;
         self.postFxSwitch.on = NO;
@@ -305,6 +374,7 @@
         self.subControlsContainer.userInteractionEnabled = YES;
         self.subControlsContainer.alpha = 1.0;
         self.scaleTextField.text = [NSString stringWithFormat:@"%.2f", cfg.resolutionScale];
+        self.scaleSlider.value = (float)cfg.resolutionScale;
         self.textureClampingSwitch.on = cfg.textureClampingEnabled;
         self.shadowsSwitch.on = cfg.disableShadows;
         self.postFxSwitch.on = cfg.disablePostFX;
@@ -321,12 +391,25 @@
 - (void)saveAndExitTapped {
     float scale = [self.scaleTextField.text floatValue];
     if (scale < 0.25f || scale > 3.0f) {
+        if (@available(iOS 10.0, *)) {
+            if ([UINotificationFeedbackGenerator class]) {
+                UINotificationFeedbackGenerator *feedback = [[UINotificationFeedbackGenerator alloc] init];
+                [feedback notificationOccurred:UINotificationFeedbackTypeError];
+            }
+        }
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Invalid Resolution Scale"
                                                                        message:@"Scale must be between 0.25 and 3.0 (e.g. 0.75, 1.00)."
                                                                 preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
         [self presentViewController:alert animated:YES completion:nil];
         return;
+    }
+
+    if (@available(iOS 10.0, *)) {
+        if ([UIImpactFeedbackGenerator class]) {
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+            [feedback impactOccurred];
+        }
     }
 
     ROConfig *cfg = [ROConfig sharedConfig];
@@ -356,33 +439,51 @@
         (void)action;
         exit(0);
     }]];
+    __weak typeof(self) weakSelf = self;
     [exitAlert addAction:[UIAlertAction actionWithTitle:@"Later" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
         (void)action;
-        [self dismissMenu];
+        [weakSelf dismissMenu];
     }]];
     [self presentViewController:exitAlert animated:YES completion:nil];
 }
 
 - (void)closeTapped {
+    if (@available(iOS 10.0, *)) {
+        if ([UIImpactFeedbackGenerator class]) {
+            UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+            [feedback impactOccurred];
+        }
+    }
     [self dismissMenu];
 }
 
 - (void)presentInParent:(UIViewController *)parent {
     self.view.alpha = 0.0;
+    self.dialogCard.transform = CGAffineTransformMakeScale(0.86, 0.86);
     [parent addChildViewController:self];
     [parent.view addSubview:self.view];
     self.view.frame = parent.view.bounds;
     self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self didMoveToParentViewController:parent];
 
-    [UIView animateWithDuration:0.25 animations:^{
+    [UIView animateWithDuration:0.35
+                          delay:0
+         usingSpringWithDamping:0.80
+          initialSpringVelocity:0.5
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
         self.view.alpha = 1.0;
-    }];
+        self.dialogCard.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (void)dismissMenu {
-    [UIView animateWithDuration:0.20 animations:^{
+    [UIView animateWithDuration:0.20
+                          delay:0
+                        options:UIViewAnimationOptionCurveEaseIn
+                     animations:^{
         self.view.alpha = 0.0;
+        self.dialogCard.transform = CGAffineTransformMakeScale(0.90, 0.90);
     } completion:^(BOOL finished) {
         (void)finished;
         [self willMoveToParentViewController:nil];

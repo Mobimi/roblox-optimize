@@ -36,12 +36,17 @@ static void ROOptimizerEntry(void) {
     }
 
     // 4. Attach UI overlay once the application has launched and window scene is available
-    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification
+    __block id<NSObject> launchObserver = nil;
+    launchObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification
                                                       object:nil
                                                        queue:[NSOperationQueue mainQueue]
                                                   usingBlock:^(NSNotification *note) {
         (void)note;
         ROInitializeUI();
+        if (launchObserver) {
+            [[NSNotificationCenter defaultCenter] removeObserver:launchObserver];
+            launchObserver = nil;
+        }
     }];
 
     // Fallback: in case dylib was loaded after UIApplicationDidFinishLaunchingNotification had fired
