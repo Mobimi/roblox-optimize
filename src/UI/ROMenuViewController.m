@@ -20,10 +20,31 @@
 @property (nonatomic, strong) UISelectionFeedbackGenerator *selectionFeedback;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *impactLight;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *impactMedium;
+@property (nonatomic, assign, readwrite) BOOL isDismissing;
 
 @end
 
 @implementation ROMenuViewController
+
+- (BOOL)shouldAutorotate {
+    return YES;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    return UIInterfaceOrientationMaskAll;
+}
+
+- (BOOL)prefersStatusBarHidden {
+    return NO;
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        [self.view setNeedsLayout];
+        [self.view layoutIfNeeded];
+    } completion:nil];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -44,36 +65,30 @@
 }
 
 - (void)setupViewHierarchy {
-    self.view.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.55];
+    // R1: Translucent background without blackout
+    self.view.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.35];
 
-    // Modern blur backdrop for gameplay immersion
-    UIBlurEffect *backdropBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
-    UIVisualEffectView *backdropBlurView = [[UIVisualEffectView alloc] initWithEffect:backdropBlur];
-    backdropBlurView.frame = self.view.bounds;
-    backdropBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self.view addSubview:backdropBlurView];
-
-    // Tap backdrop outside the dialog card to dismiss
+    // Tap backdrop outside the dialog card to dismiss (fallback & pairwise test contract)
     UITapGestureRecognizer *backdropTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(closeTapped)];
     [self.view addGestureRecognizer:backdropTap];
 
-    // Dialog card with frosted glass styling and rounded corners
+    // Dialog card with frosted glass styling and rounded corners (Landscape card ~480x280pt)
     self.dialogCard = [[UIView alloc] init];
-    self.dialogCard.backgroundColor = [UIColor colorWithRed:0.08 green:0.11 blue:0.17 alpha:0.68]; // Apple Liquid Glass translucent tint
-    self.dialogCard.layer.cornerRadius = 20.0;
+    self.dialogCard.backgroundColor = [UIColor colorWithRed:0.08 green:0.11 blue:0.17 alpha:0.75]; // Apple Liquid Glass translucent tint
+    self.dialogCard.layer.cornerRadius = 18.0;
     if (@available(iOS 13.0, *)) {
         if ([self.dialogCard.layer respondsToSelector:@selector(setCornerCurve:)]) {
             self.dialogCard.layer.cornerCurve = kCACornerCurveContinuous;
         }
     }
     // Specular highlight rim border
-    self.dialogCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
+    self.dialogCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.25].CGColor;
     self.dialogCard.layer.borderWidth = 1.0;
     // Ambient luminescence glow shadow
-    self.dialogCard.layer.shadowColor = [UIColor colorWithRed:0.15 green:0.45 blue:0.95 alpha:0.35].CGColor;
+    self.dialogCard.layer.shadowColor = [UIColor colorWithRed:0.15 green:0.45 blue:0.95 alpha:0.40].CGColor;
     self.dialogCard.layer.shadowOffset = CGSizeMake(0, 8);
     self.dialogCard.layer.shadowRadius = 24.0;
-    self.dialogCard.layer.shadowOpacity = 0.55;
+    self.dialogCard.layer.shadowOpacity = 0.60;
     self.dialogCard.layer.masksToBounds = NO;
     self.dialogCard.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.dialogCard];
@@ -83,7 +98,7 @@
     UIVisualEffectView *cardBlurView = [[UIVisualEffectView alloc] initWithEffect:cardBlur];
     cardBlurView.frame = self.dialogCard.bounds;
     cardBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    cardBlurView.layer.cornerRadius = 20.0;
+    cardBlurView.layer.cornerRadius = 18.0;
     cardBlurView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         if ([cardBlurView.layer respondsToSelector:@selector(setCornerCurve:)]) {
@@ -95,11 +110,14 @@
 
     // Card tap recognizer absorbs taps so card touches don't trigger backdropTap
     UITapGestureRecognizer *cardTap = [[UITapGestureRecognizer alloc] initWithTarget:nil action:nil];
+    cardTap.cancelsTouchesInView = NO;
     [self.dialogCard addGestureRecognizer:cardTap];
 
     // Scroll view for landscape orientation safety
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.showsVerticalScrollIndicator = NO;
+    self.scrollView.showsHorizontalScrollIndicator = NO;
     [self.dialogCard addSubview:self.scrollView];
 
     self.contentView = [[UIView alloc] init];
@@ -109,7 +127,7 @@
     // Title label
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = @"⚡ Roblox iOS Optimizer";
-    titleLabel.font = [UIFont systemFontOfSize:17 weight:UIFontWeightBold];
+    titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightBold];
     titleLabel.textColor = [UIColor whiteColor];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:titleLabel];
@@ -117,9 +135,12 @@
     // Preset Segmented Control
     self.presetControl = [[UISegmentedControl alloc] initWithItems:@[@"Potato", @"Balanced", @"Manual"]];
     self.presetControl.selectedSegmentTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
+    if (@available(iOS 13.0, *)) {
+        self.presetControl.backgroundColor = [UIColor colorWithRed:0.04 green:0.06 blue:0.10 alpha:0.60];
+    }
     NSDictionary *attr = @{
         NSForegroundColorAttributeName: [UIColor whiteColor],
-        NSFontAttributeName: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold]
+        NSFontAttributeName: [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold]
     };
     [self.presetControl setTitleTextAttributes:attr forState:UIControlStateNormal];
     [self.presetControl setTitleTextAttributes:attr forState:UIControlStateSelected];
@@ -127,15 +148,17 @@
     self.presetControl.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.presetControl];
 
-    // Sub-controls container
+    // Sub-controls container (2-column layout in landscape)
     self.subControlsContainer = [[UIView alloc] init];
     self.subControlsContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.subControlsContainer];
 
-    // 1. Resolution Scale Row (Slider & Textfield)
+    // === LEFT COLUMN: Resolution Scale & Target FPS ===
+
+    // 1. Resolution Scale
     UILabel *scaleLabel = [[UILabel alloc] init];
     scaleLabel.text = @"Resolution Scale:";
-    scaleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    scaleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
     scaleLabel.textColor = [UIColor whiteColor];
     scaleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:scaleLabel];
@@ -150,15 +173,15 @@
 
     self.scaleTextField = [[UITextField alloc] init];
     self.scaleTextField.borderStyle = UITextBorderStyleRoundedRect;
-    self.scaleTextField.backgroundColor = [UIColor colorWithRed:0.04 green:0.06 blue:0.10 alpha:1.0];
+    self.scaleTextField.backgroundColor = [UIColor colorWithRed:0.04 green:0.06 blue:0.10 alpha:0.85];
     self.scaleTextField.textColor = [UIColor whiteColor];
-    self.scaleTextField.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
+    self.scaleTextField.font = [UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];
     self.scaleTextField.keyboardType = UIKeyboardTypeDecimalPad;
+    self.scaleTextField.textAlignment = NSTextAlignmentCenter;
     self.scaleTextField.delegate = self;
     [self.scaleTextField addTarget:self action:@selector(textFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
     self.scaleTextField.translatesAutoresizingMaskIntoConstraints = NO;
 
-    // Keyboard toolbar with Done button
     UIToolbar *toolbar = [[UIToolbar alloc] initWithFrame:CGRectMake(0, 0, 320, 44)];
     toolbar.barStyle = UIBarStyleBlack;
     UIBarButtonItem *flex = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
@@ -167,11 +190,34 @@
     self.scaleTextField.inputAccessoryView = toolbar;
     [self.subControlsContainer addSubview:self.scaleTextField];
 
-    // 2. Texture Clamping Row
+    // 2. Target FPS
+    UILabel *fpsLabel = [[UILabel alloc] init];
+    fpsLabel.text = @"Target FPS:";
+    fpsLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    fpsLabel.textColor = [UIColor whiteColor];
+    fpsLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.subControlsContainer addSubview:fpsLabel];
+
+    self.fpsControl = [[UISegmentedControl alloc] initWithItems:@[@"30", @"60", @"Unlocked"]];
+    self.fpsControl.selectedSegmentTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
+    if (@available(iOS 13.0, *)) {
+        self.fpsControl.backgroundColor = [UIColor colorWithRed:0.04 green:0.06 blue:0.10 alpha:0.60];
+    }
+    [self.fpsControl setTitleTextAttributes:attr forState:UIControlStateNormal];
+    [self.fpsControl setTitleTextAttributes:attr forState:UIControlStateSelected];
+    [self.fpsControl addTarget:self action:@selector(fpsChanged:) forControlEvents:UIControlEventValueChanged];
+    self.fpsControl.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.subControlsContainer addSubview:self.fpsControl];
+
+    // === RIGHT COLUMN: Toggles (Clamping, Shadows, Post-FX) ===
+
+    // 3. Texture Clamping Row
     UILabel *textureLabel = [[UILabel alloc] init];
-    textureLabel.text = @"Texture Clamping (Jetsam fix):";
-    textureLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    textureLabel.text = @"Texture Clamping (Jetsam):";
+    textureLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
     textureLabel.textColor = [UIColor whiteColor];
+    textureLabel.adjustsFontSizeToFitWidth = YES;
+    textureLabel.minimumScaleFactor = 0.8;
     textureLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:textureLabel];
 
@@ -181,11 +227,13 @@
     self.textureClampingSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.textureClampingSwitch];
 
-    // 3. Shadows Row
+    // 4. Shadows Row
     UILabel *shadowsLabel = [[UILabel alloc] init];
     shadowsLabel.text = @"Disable Shadows:";
-    shadowsLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    shadowsLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
     shadowsLabel.textColor = [UIColor whiteColor];
+    shadowsLabel.adjustsFontSizeToFitWidth = YES;
+    shadowsLabel.minimumScaleFactor = 0.8;
     shadowsLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:shadowsLabel];
 
@@ -195,11 +243,13 @@
     self.shadowsSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.shadowsSwitch];
 
-    // 4. Post-FX Row
+    // 5. Post-FX Row
     UILabel *postFxLabel = [[UILabel alloc] init];
-    postFxLabel.text = @"Disable Post-FX (Bloom/Blur):";
-    postFxLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    postFxLabel.text = @"Disable Post-FX:";
+    postFxLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
     postFxLabel.textColor = [UIColor whiteColor];
+    postFxLabel.adjustsFontSizeToFitWidth = YES;
+    postFxLabel.minimumScaleFactor = 0.8;
     postFxLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:postFxLabel];
 
@@ -209,27 +259,11 @@
     self.postFxSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.postFxSwitch];
 
-    // 5. FPS Row
-    UILabel *fpsLabel = [[UILabel alloc] init];
-    fpsLabel.text = @"Target FPS:";
-    fpsLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
-    fpsLabel.textColor = [UIColor whiteColor];
-    fpsLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.subControlsContainer addSubview:fpsLabel];
-
-    self.fpsControl = [[UISegmentedControl alloc] initWithItems:@[@"30", @"60", @"Unlocked"]];
-    self.fpsControl.selectedSegmentTintColor = [UIColor colorWithRed:0.15 green:0.40 blue:0.95 alpha:1.0];
-    [self.fpsControl setTitleTextAttributes:attr forState:UIControlStateNormal];
-    [self.fpsControl setTitleTextAttributes:attr forState:UIControlStateSelected];
-    [self.fpsControl addTarget:self action:@selector(fpsChanged:) forControlEvents:UIControlEventValueChanged];
-    self.fpsControl.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.subControlsContainer addSubview:self.fpsControl];
-
     // Action Buttons with refined Liquid Glass styling
     self.saveExitButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.saveExitButton setTitle:@"Save & Exit" forState:UIControlStateNormal];
     [self.saveExitButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    self.saveExitButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
+    self.saveExitButton.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
     self.saveExitButton.backgroundColor = [UIColor colorWithRed:0.86 green:0.24 blue:0.24 alpha:0.90]; // Red
     self.saveExitButton.layer.cornerRadius = 10.0;
     self.saveExitButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.25].CGColor;
@@ -241,7 +275,7 @@
     self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.closeButton setTitle:@"Close Menu" forState:UIControlStateNormal];
     [self.closeButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    self.closeButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    self.closeButton.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
     self.closeButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.26 blue:0.35 alpha:0.85];
     self.closeButton.layer.cornerRadius = 10.0;
     self.closeButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
@@ -258,83 +292,113 @@
     }
 
     // Auto Layout
+    NSLayoutConstraint *cardWidthConstraint = [self.dialogCard.widthAnchor constraintEqualToConstant:480];
+    cardWidthConstraint.priority = UILayoutPriorityDefaultHigh;
+
+    NSLayoutConstraint *cardHeightConstraint = [self.dialogCard.heightAnchor constraintEqualToConstant:280];
+    cardHeightConstraint.priority = UILayoutPriorityDefaultHigh;
+
     [NSLayoutConstraint activateConstraints:@[
+        // Dialog card centering and landscape sizing (~480x280pt)
         [self.dialogCard.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.dialogCard.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
-        [self.dialogCard.widthAnchor constraintLessThanOrEqualToConstant:400],
+        cardWidthConstraint,
+        cardHeightConstraint,
         [self.dialogCard.widthAnchor constraintLessThanOrEqualToAnchor:self.view.widthAnchor constant:-32],
-        [self.dialogCard.heightAnchor constraintLessThanOrEqualToAnchor:self.view.heightAnchor constant:-32],
+        [self.dialogCard.heightAnchor constraintLessThanOrEqualToAnchor:self.view.heightAnchor constant:-20],
+        [self.dialogCard.widthAnchor constraintGreaterThanOrEqualToConstant:320],
+        [self.dialogCard.heightAnchor constraintGreaterThanOrEqualToConstant:240],
 
+        // Scroll view fills dialog card
         [self.scrollView.topAnchor constraintEqualToAnchor:self.dialogCard.topAnchor],
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.dialogCard.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.dialogCard.trailingAnchor],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:self.dialogCard.bottomAnchor],
 
+        // Content view fills scroll view
         [self.contentView.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor],
         [self.contentView.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor],
         [self.contentView.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor],
         [self.contentView.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor],
         [self.contentView.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16],
+        // Header: Title
+        [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
+        [titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-16],
 
-        [self.presetControl.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:12],
+        // Presets Segmented Control
+        [self.presetControl.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8],
         [self.presetControl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
         [self.presetControl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
-        [self.presetControl.heightAnchor constraintEqualToConstant:32],
+        [self.presetControl.heightAnchor constraintEqualToConstant:28],
 
-        [self.subControlsContainer.topAnchor constraintEqualToAnchor:self.presetControl.bottomAnchor constant:12],
+        // Subcontrols Container
+        [self.subControlsContainer.topAnchor constraintEqualToAnchor:self.presetControl.bottomAnchor constant:10],
         [self.subControlsContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
         [self.subControlsContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
 
-        // Scale row (slider & textfield)
-        [scaleLabel.topAnchor constraintEqualToAnchor:self.subControlsContainer.topAnchor constant:8],
+        // --- Left Column: Scale & FPS ---
+        // Scale label
+        [scaleLabel.topAnchor constraintEqualToAnchor:self.subControlsContainer.topAnchor constant:2],
         [scaleLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
-        [self.scaleSlider.centerYAnchor constraintEqualToAnchor:scaleLabel.centerYAnchor],
-        [self.scaleSlider.leadingAnchor constraintEqualToAnchor:scaleLabel.trailingAnchor constant:8],
-        [self.scaleSlider.trailingAnchor constraintEqualToAnchor:self.scaleTextField.leadingAnchor constant:-8],
-        [self.scaleTextField.centerYAnchor constraintEqualToAnchor:scaleLabel.centerYAnchor],
-        [self.scaleTextField.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.trailingAnchor],
-        [self.scaleTextField.widthAnchor constraintEqualToConstant:70],
+        [scaleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.subControlsContainer.centerXAnchor constant:-8],
 
+        // Scale slider & textfield
+        [self.scaleSlider.topAnchor constraintEqualToAnchor:scaleLabel.bottomAnchor constant:4],
+        [self.scaleSlider.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
+        [self.scaleSlider.trailingAnchor constraintEqualToAnchor:self.scaleTextField.leadingAnchor constant:-8],
+        [self.scaleTextField.centerYAnchor constraintEqualToAnchor:self.scaleSlider.centerYAnchor],
+        [self.scaleTextField.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.centerXAnchor constant:-8],
+        [self.scaleTextField.widthAnchor constraintEqualToConstant:62],
+        [self.scaleTextField.heightAnchor constraintEqualToConstant:28],
+
+        // FPS label
+        [fpsLabel.topAnchor constraintEqualToAnchor:self.scaleSlider.bottomAnchor constant:10],
+        [fpsLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
+        [fpsLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.subControlsContainer.centerXAnchor constant:-8],
+
+        // FPS control
+        [self.fpsControl.topAnchor constraintEqualToAnchor:fpsLabel.bottomAnchor constant:4],
+        [self.fpsControl.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
+        [self.fpsControl.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.centerXAnchor constant:-8],
+        [self.fpsControl.heightAnchor constraintEqualToConstant:28],
+        [self.fpsControl.bottomAnchor constraintLessThanOrEqualToAnchor:self.subControlsContainer.bottomAnchor constant:-4],
+
+        // --- Right Column: Toggles ---
         // Texture Clamping row
-        [textureLabel.topAnchor constraintEqualToAnchor:scaleLabel.bottomAnchor constant:14],
-        [textureLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
-        [self.textureClampingSwitch.centerYAnchor constraintEqualToAnchor:textureLabel.centerYAnchor],
+        [textureLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.centerXAnchor constant:8],
+        [textureLabel.centerYAnchor constraintEqualToAnchor:self.textureClampingSwitch.centerYAnchor],
+        [textureLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.textureClampingSwitch.leadingAnchor constant:-4],
+        [self.textureClampingSwitch.topAnchor constraintEqualToAnchor:self.subControlsContainer.topAnchor],
         [self.textureClampingSwitch.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.trailingAnchor],
 
         // Shadows row
-        [shadowsLabel.topAnchor constraintEqualToAnchor:textureLabel.bottomAnchor constant:14],
-        [shadowsLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
-        [self.shadowsSwitch.centerYAnchor constraintEqualToAnchor:shadowsLabel.centerYAnchor],
+        [shadowsLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.centerXAnchor constant:8],
+        [shadowsLabel.centerYAnchor constraintEqualToAnchor:self.shadowsSwitch.centerYAnchor],
+        [shadowsLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.shadowsSwitch.leadingAnchor constant:-4],
+        [self.shadowsSwitch.topAnchor constraintEqualToAnchor:self.textureClampingSwitch.bottomAnchor constant:8],
         [self.shadowsSwitch.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.trailingAnchor],
 
         // Post-FX row
-        [postFxLabel.topAnchor constraintEqualToAnchor:shadowsLabel.bottomAnchor constant:14],
-        [postFxLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
-        [self.postFxSwitch.centerYAnchor constraintEqualToAnchor:postFxLabel.centerYAnchor],
+        [postFxLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.centerXAnchor constant:8],
+        [postFxLabel.centerYAnchor constraintEqualToAnchor:self.postFxSwitch.centerYAnchor],
+        [postFxLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.postFxSwitch.leadingAnchor constant:-4],
+        [self.postFxSwitch.topAnchor constraintEqualToAnchor:self.shadowsSwitch.bottomAnchor constant:8],
         [self.postFxSwitch.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.trailingAnchor],
+        [self.postFxSwitch.bottomAnchor constraintEqualToAnchor:self.subControlsContainer.bottomAnchor constant:-4],
 
-        // FPS row
-        [fpsLabel.topAnchor constraintEqualToAnchor:postFxLabel.bottomAnchor constant:14],
-        [fpsLabel.leadingAnchor constraintEqualToAnchor:self.subControlsContainer.leadingAnchor],
-        [self.fpsControl.centerYAnchor constraintEqualToAnchor:fpsLabel.centerYAnchor],
-        [self.fpsControl.trailingAnchor constraintEqualToAnchor:self.subControlsContainer.trailingAnchor],
-        [self.fpsControl.widthAnchor constraintEqualToConstant:150],
-        [self.fpsControl.bottomAnchor constraintEqualToAnchor:self.subControlsContainer.bottomAnchor constant:-8],
-
-        // Buttons
-        [self.saveExitButton.topAnchor constraintEqualToAnchor:self.subControlsContainer.bottomAnchor constant:16],
+        // --- Bottom Action Buttons ---
+        [self.saveExitButton.topAnchor constraintEqualToAnchor:self.subControlsContainer.bottomAnchor constant:12],
         [self.saveExitButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
-        [self.saveExitButton.heightAnchor constraintEqualToConstant:38],
+        [self.saveExitButton.heightAnchor constraintEqualToConstant:34],
 
-        [self.closeButton.topAnchor constraintEqualToAnchor:self.subControlsContainer.bottomAnchor constant:16],
+        [self.closeButton.topAnchor constraintEqualToAnchor:self.subControlsContainer.bottomAnchor constant:12],
         [self.closeButton.leadingAnchor constraintEqualToAnchor:self.saveExitButton.trailingAnchor constant:12],
         [self.closeButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
         [self.closeButton.widthAnchor constraintEqualToAnchor:self.saveExitButton.widthAnchor],
-        [self.closeButton.heightAnchor constraintEqualToConstant:38],
-        [self.closeButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-16]
+        [self.closeButton.heightAnchor constraintEqualToConstant:34],
+        [self.closeButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-12]
     ]];
 }
 
@@ -524,32 +588,39 @@
 }
 
 - (void)presentInParent:(UIViewController *)parent {
+    _isDismissing = NO;
+    self.view.userInteractionEnabled = YES;
     self.view.alpha = 0.0;
     self.dialogCard.transform = CGAffineTransformMakeScale(0.86, 0.86);
     [parent addChildViewController:self];
     [parent.view addSubview:self.view];
     self.view.frame = parent.view.bounds;
     self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view layoutIfNeeded];
     [self didMoveToParentViewController:parent];
 
     [UIView animateWithDuration:0.35
                           delay:0
          usingSpringWithDamping:0.80
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
+           initialSpringVelocity:0.5
+                         options:UIViewAnimationOptionCurveEaseOut
+                      animations:^{
         self.view.alpha = 1.0;
         self.dialogCard.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
 - (void)dismissMenu {
+    if (_isDismissing) return;
+    _isDismissing = YES;
+    self.view.userInteractionEnabled = NO;
+
     [UIView animateWithDuration:0.25
                           delay:0
          usingSpringWithDamping:0.85
-          initialSpringVelocity:0.5
-                        options:UIViewAnimationOptionCurveEaseIn
-                     animations:^{
+           initialSpringVelocity:0.5
+                         options:UIViewAnimationOptionCurveEaseIn
+                      animations:^{
         self.view.alpha = 0.0;
         self.dialogCard.transform = CGAffineTransformMakeScale(0.90, 0.90);
     } completion:^(BOOL finished) {

@@ -390,6 +390,12 @@ class TestFeature7DraggableFABOverlay(unittest.TestCase):
         self.assertIn("targetX = (self.center.x < superview.bounds.size.width / 2.0) ? minX : maxX;", self.button_m)
         self.assertIn("UIViewAnimationOptionCurveEaseOut", self.button_m)
 
+    def test_f7_06_hittest_outside_card_dismisses_and_passes_through(self):
+        """Verify hitTest:withEvent: dismisses menu and returns nil for touches outside card."""
+        self.assertIn("if (self.menuViewController)", self.window_m)
+        self.assertIn("[self.menuViewController dismissMenu];", self.window_m)
+        self.assertIn("![hitView isDescendantOfView:card]", self.window_m)
+
 
 class TestFeature8ModalConfigPopup(unittest.TestCase):
     """F8: ROMenuViewController Preset State Machine & Sub-controls."""
@@ -420,6 +426,19 @@ class TestFeature8ModalConfigPopup(unittest.TestCase):
     def test_f8_05_fps_control_options(self):
         """Verify FPS segmented control has 30, 60, and Unlocked."""
         self.assertIn('@[@"30", @"60", @"Unlocked"]', self.menu_m)
+
+    def test_f8_06_translucent_backdrop_no_fullscreen_blur(self):
+        """Verify translucent background without full screen blur to prevent black screen."""
+        self.assertIn("self.view.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.35];", self.menu_m)
+        self.assertNotIn("backdropBlurView", self.menu_m)
+
+    def test_f8_07_landscape_card_dimensions_and_two_column_layout(self):
+        """Verify landscape card dimensions ~480x280pt and 2-column layout constraints."""
+        self.assertIn("constraintEqualToConstant:480", self.menu_m)
+        self.assertIn("constraintEqualToConstant:280", self.menu_m)
+        self.assertIn("self.subControlsContainer.centerXAnchor", self.menu_m)
+        self.assertIn("cardWidthConstraint.priority = UILayoutPriorityDefaultHigh;", self.menu_m)
+        self.assertIn("cardHeightConstraint.priority = UILayoutPriorityDefaultHigh;", self.menu_m)
 
 
 class TestFeature9ResolutionInputAndCleanExit(unittest.TestCase):

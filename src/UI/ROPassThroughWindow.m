@@ -26,6 +26,14 @@
     return NO;
 }
 
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        [self.view setNeedsLayout];
+        [self.view layoutIfNeeded];
+    } completion:nil];
+}
+
 @end
 
 @interface ROPassThroughWindow ()
@@ -48,20 +56,32 @@
                     break;
                 }
             }
+            if (!activeScene) {
+                for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+                    if ([scene isKindOfClass:[UIWindowScene class]]) {
+                        activeScene = (UIWindowScene *)scene;
+                        break;
+                    }
+                }
+            }
         }
 
         if (activeScene) {
             sharedInstance = [[ROPassThroughWindow alloc] initWithWindowScene:activeScene];
+            sharedInstance.frame = activeScene.coordinateSpace.bounds;
         } else {
             sharedInstance = [[ROPassThroughWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
         }
 
         sharedInstance.windowLevel = UIWindowLevelAlert + 100.0;
         sharedInstance.backgroundColor = [UIColor clearColor];
+        sharedInstance.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
         ROOverlayContainerViewController *rootVC = [[ROOverlayContainerViewController alloc] init];
         rootVC.view.backgroundColor = [UIColor clearColor];
         rootVC.view.userInteractionEnabled = YES;
+        rootVC.view.frame = sharedInstance.bounds;
+        rootVC.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         sharedInstance.rootViewController = rootVC;
 
         // Add Draggable Floating Action Button
@@ -84,7 +104,10 @@
                                                               usingBlock:^(NSNotification *note) {
                     if (@available(iOS 13.0, *)) {
                         if ([note.object isKindOfClass:[UIWindowScene class]] && !sharedInstance.windowScene) {
-                            sharedInstance.windowScene = (UIWindowScene *)note.object;
+                            UIWindowScene *scene = (UIWindowScene *)note.object;
+                            sharedInstance.windowScene = scene;
+                            sharedInstance.frame = scene.coordinateSpace.bounds;
+                            sharedInstance.rootViewController.view.frame = sharedInstance.bounds;
                             sharedInstance.hidden = NO;
                             if (sceneObserver) {
                                 [[NSNotificationCenter defaultCenter] removeObserver:sceneObserver];
@@ -118,7 +141,14 @@
                 }
             }
         }
+        if (self.windowScene) {
+            self.frame = self.windowScene.coordinateSpace.bounds;
+        }
+    } else {
+        self.frame = [UIScreen mainScreen].bounds;
     }
+    self.rootViewController.view.frame = self.bounds;
+
     if (self.menuViewController) {
         [self.menuViewController dismissMenu];
     } else {
@@ -137,8 +167,24 @@
     // If the touch lands on the window itself or on the root transparent view,
     // return nil so that touches pass through seamlessly to the underlying game.
     if (hitView == self || hitView == self.rootViewController.view) {
+        if (self.menuViewController) {
+            [self.menuViewController dismissMenu];
+        }
         return nil;
     }
+
+    if (self.menuViewController) {
+        UIView *card = self.menuViewController.dialogCard;
+        // If touch is outside the menu card and outside the floating button, dismiss menu and pass touch to game
+        if (hitView && card &&
+            ![hitView isDescendantOfView:card] &&
+            hitView != self.floatingButton &&
+            ![hitView isDescendantOfView:self.floatingButton]) {
+            [self.menuViewController dismissMenu];
+            return nil;
+        }
+    }
+
     return hitView;
 }
 

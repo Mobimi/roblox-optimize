@@ -284,6 +284,18 @@ class TestPairwiseUIAndInteraction(unittest.TestCase):
         self.assertIn("[menu presentInParent:self.rootViewController];", window_m)
         self.assertIn("backdropTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(closeTapped)];", menu_m)
 
+    def test_p13b_landscape_orientation_and_passthrough_coordination(self):
+        """Verify overlay container and menu support landscape orientation transitions and centered card."""
+        window_m = (SRC_DIR / "UI" / "ROPassThroughWindow.m").read_text(encoding="utf-8")
+        menu_m = (SRC_DIR / "UI" / "ROMenuViewController.m").read_text(encoding="utf-8")
+
+        self.assertIn("viewWillTransitionToSize:", window_m)
+        self.assertIn("viewWillTransitionToSize:", menu_m)
+        self.assertIn("shouldAutorotate", window_m)
+        self.assertIn("shouldAutorotate", menu_m)
+        self.assertIn("constraintEqualToAnchor:self.view.centerXAnchor", menu_m)
+        self.assertIn("constraintEqualToAnchor:self.view.centerYAnchor", menu_m)
+
     def test_p14_resolution_input_validation_and_model_persistence(self):
         """Valid resolution input ('0.75') is stored to config and saved."""
         menu_m = (SRC_DIR / "UI" / "ROMenuViewController.m").read_text(encoding="utf-8")

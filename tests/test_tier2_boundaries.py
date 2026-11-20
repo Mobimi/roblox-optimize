@@ -391,6 +391,14 @@ class TestB7TouchPassthroughBoundaries(unittest.TestCase):
         button_m = (SRC_DIR / "UI" / "ROFloatingButton.m").read_text(encoding="utf-8")
         self.assertIn("insets = superview.safeAreaInsets;", button_m)
 
+    def test_b7_06_outside_card_touch_calls_dismiss_and_returns_nil(self):
+        """Verify hitTest:withEvent: dismisses menu and returns nil when hitView is not in dialogCard."""
+        self.assertIn("if (hitView && card &&", self.window_m)
+        self.assertIn("![hitView isDescendantOfView:card]", self.window_m)
+        self.assertIn("hitView != self.floatingButton", self.window_m)
+        self.assertIn("[self.menuViewController dismissMenu];", self.window_m)
+        self.assertIn("return nil;", self.window_m)
+
 
 class TestB8PresetModelCorruptionBoundaries(unittest.TestCase):
     """B8: Configuration Model Corruption & Edge Fallbacks."""

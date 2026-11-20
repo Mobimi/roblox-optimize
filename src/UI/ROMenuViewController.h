@@ -20,6 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UISwitch *textureClampingSwitch;
 @property (nonatomic, strong) UISwitch *shadowsSwitch;
 @property (nonatomic, strong) UISwitch *postFxSwitch;
+@property (nonatomic, assign, readonly) BOOL isDismissing;
 
 - (void)presentInParent:(UIViewController *)parent;
 - (void)dismissMenu;
