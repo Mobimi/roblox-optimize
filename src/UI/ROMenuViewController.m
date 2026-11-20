@@ -484,6 +484,11 @@
     }
 }
 
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
+}
+
 - (void)applyPresetUIState:(ROPresetMode)mode {
     ROConfig *cfg = [ROConfig sharedConfig];
     if (mode == ROPresetModePotato) {
@@ -624,6 +629,7 @@
 - (void)dismissMenu {
     if (_isDismissing) return;
     _isDismissing = YES;
+    [self.scaleTextField resignFirstResponder];
     self.view.userInteractionEnabled = NO;
 
     [UIView animateWithDuration:0.25

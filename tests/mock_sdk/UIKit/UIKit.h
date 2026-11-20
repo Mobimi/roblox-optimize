@@ -196,6 +196,8 @@ static NSString * const UIApplicationDidFinishLaunchingNotification = @"UIApplic
 @property (nonatomic, readonly, strong) NSLayoutAnchor *centerYAnchor;
 
 - (void)addSubview:(UIView *)view;
+- (void)bringSubviewToFront:(UIView *)view;
+- (void)sendSubviewToBack:(UIView *)view;
 - (void)removeFromSuperview;
 - (void)addGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 - (nullable UIView *)hitTest:(CGPoint)point withEvent:(nullable UIEvent *)event;
@@ -286,6 +288,8 @@ static NSString * const UIApplicationDidFinishLaunchingNotification = @"UIApplic
 @end
 
 @protocol UITextFieldDelegate <NSObject>
+@optional
+- (BOOL)textFieldShouldReturn:(UITextField *)textField;
 @end
 
 @interface UITextField : UIControl

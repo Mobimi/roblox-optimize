@@ -405,6 +405,10 @@ class TestB7TouchPassthroughBoundaries(unittest.TestCase):
         self.assertIn("if (presentedVC) {", self.window_m)
         self.assertIn("return hitView;", self.window_m)
 
+    def test_b7_08_floating_button_captures_touches_over_backdrop(self):
+        """Verify floating button remains in front of menu overlay to capture touches during menu presentation."""
+        self.assertIn("[self.rootViewController.view bringSubviewToFront:self.floatingButton];", self.window_m)
+
 
 class TestB8PresetModelCorruptionBoundaries(unittest.TestCase):
     """B8: Configuration Model Corruption & Edge Fallbacks."""

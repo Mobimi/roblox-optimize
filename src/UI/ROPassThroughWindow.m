@@ -159,6 +159,7 @@
             weakSelf.menuViewController = nil;
         };
         [menu presentInParent:self.rootViewController];
+        [self.rootViewController.view bringSubviewToFront:self.floatingButton];
     }
 }
 

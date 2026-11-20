@@ -402,6 +402,10 @@ class TestFeature7DraggableFABOverlay(unittest.TestCase):
         self.assertIn("hitView == presentedVC.view || [hitView isDescendantOfView:presentedVC.view]", self.window_m)
         self.assertIn("return hitView;", self.window_m)
 
+    def test_f7_08_floating_button_brought_to_front_on_menu_presentation(self):
+        """Verify floatingButton is brought to front so it remains visible and captures taps above the menu backdrop."""
+        self.assertIn("[self.rootViewController.view bringSubviewToFront:self.floatingButton];", self.window_m)
+
 
 class TestFeature8ModalConfigPopup(unittest.TestCase):
     """F8: ROMenuViewController Preset State Machine & Sub-controls."""

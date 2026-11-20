@@ -306,6 +306,12 @@ class TestPairwiseUIAndInteraction(unittest.TestCase):
         self.assertIn("presentedViewController", window_m)
         self.assertIn("if (presentedVC) {", window_m)
 
+    def test_p13d_floating_button_front_stacking_with_modal(self):
+        """Verify floating button is placed in front of modal container view so toggle interactions succeed."""
+        window_m = (SRC_DIR / "UI" / "ROPassThroughWindow.m").read_text(encoding="utf-8")
+        self.assertIn("[menu presentInParent:self.rootViewController];", window_m)
+        self.assertIn("[self.rootViewController.view bringSubviewToFront:self.floatingButton];", window_m)
+
     def test_p14_resolution_input_validation_and_model_persistence(self):
         """Valid resolution input ('0.75') is stored to config and saved."""
         menu_m = (SRC_DIR / "UI" / "ROMenuViewController.m").read_text(encoding="utf-8")
