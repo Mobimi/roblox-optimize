@@ -48,6 +48,7 @@ jobs:
             -framework UIKit \
             -framework Metal \
             -framework QuartzCore \
+            -framework CoreGraphics \
             -Isrc \
             -o build/RobloxOptimizer.dylib \
             src/ROEntry.m \

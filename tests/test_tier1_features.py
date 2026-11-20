@@ -470,8 +470,8 @@ class TestFeature10MakefileAndBuildScript(unittest.TestCase):
         self.assertIn("-fobjc-arc", self.build_sh)
 
     def test_f10_03_all_apple_frameworks_linked(self):
-        """Verify Foundation, UIKit, Metal, and QuartzCore frameworks are linked."""
-        for fw in ["Foundation", "UIKit", "Metal", "QuartzCore"]:
+        """Verify Foundation, UIKit, Metal, QuartzCore, and CoreGraphics frameworks are linked."""
+        for fw in ["Foundation", "UIKit", "Metal", "QuartzCore", "CoreGraphics"]:
             self.assertIn(f"-framework {fw}", self.makefile)
             self.assertIn(f"-framework {fw}", self.build_sh)
 

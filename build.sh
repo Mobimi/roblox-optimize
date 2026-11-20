@@ -28,6 +28,7 @@ xcrun -sdk iphoneos clang \
   -framework UIKit \
   -framework Metal \
   -framework QuartzCore \
+  -framework CoreGraphics \
   -Isrc \
   -o "$BUILD_DIR/$TARGET" \
   src/ROEntry.m \

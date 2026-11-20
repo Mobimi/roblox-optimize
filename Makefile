@@ -24,7 +24,8 @@ endif
 LDFLAGS = -framework Foundation \
           -framework UIKit \
           -framework Metal \
-          -framework QuartzCore
+          -framework QuartzCore \
+          -framework CoreGraphics
 
 SRCS = src/ROEntry.m \
        src/Config/ROConfig.m \
