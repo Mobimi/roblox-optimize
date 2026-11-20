@@ -7,6 +7,7 @@
 
 #import "ROMetalHooks.h"
 #import "../Config/ROConfig.h"
+#import <TargetConditionals.h>
 #import <Metal/Metal.h>
 #import <objc/runtime.h>
 #import <math.h>
@@ -18,10 +19,14 @@ static inline BOOL ROIsDepthOrStencilPixelFormat(MTLPixelFormat format) {
         case MTLPixelFormatDepth16Unorm:
         case MTLPixelFormatDepth32Float:
         case MTLPixelFormatStencil8:
+#if TARGET_OS_OSX
         case MTLPixelFormatDepth24Unorm_Stencil8:
+#endif
         case MTLPixelFormatDepth32Float_Stencil8:
         case MTLPixelFormatX32_Stencil8:
+#if TARGET_OS_OSX
         case MTLPixelFormatX24_Stencil8:
+#endif
             return YES;
         default:
             return NO;
