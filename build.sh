@@ -17,7 +17,6 @@ fi
 xcrun -sdk iphoneos clang \
   -target arm64-apple-ios14.0 \
   -arch arm64 \
-  -shared \
   -dynamiclib \
   -fobjc-arc \
   -O2 \

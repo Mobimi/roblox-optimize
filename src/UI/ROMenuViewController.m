@@ -353,9 +353,11 @@
                                                                        message:@"Roblox needs to exit to apply your resolution scale and FastFlags. Reopen the game afterwards."
                                                                 preferredStyle:UIAlertControllerStyleAlert];
     [exitAlert addAction:[UIAlertAction actionWithTitle:@"Exit Now" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        (void)action;
         exit(0);
     }]];
     [exitAlert addAction:[UIAlertAction actionWithTitle:@"Later" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+        (void)action;
         [self dismissMenu];
     }]];
     [self presentViewController:exitAlert animated:YES completion:nil];
@@ -382,6 +384,7 @@
     [UIView animateWithDuration:0.20 animations:^{
         self.view.alpha = 0.0;
     } completion:^(BOOL finished) {
+        (void)finished;
         [self willMoveToParentViewController:nil];
         [self.view removeFromSuperview];
         [self removeFromParentViewController];

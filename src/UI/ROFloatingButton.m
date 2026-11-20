@@ -54,6 +54,7 @@
 }
 
 - (void)handleTap:(UITapGestureRecognizer *)gesture {
+    (void)gesture;
     if (self.isDragging) return;
     if (self.tapHandler) {
         self.tapHandler();
@@ -100,6 +101,7 @@
                          animations:^{
             self.center = CGPointMake(targetX, targetY);
         } completion:^(BOOL finished) {
+            (void)finished;
             self.isDragging = NO;
         }];
     }

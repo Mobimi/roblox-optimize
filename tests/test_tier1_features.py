@@ -476,7 +476,7 @@ class TestFeature10MakefileAndBuildScript(unittest.TestCase):
             self.assertIn(f"-framework {fw}", self.build_sh)
 
     def test_f10_04_dynamiclib_and_install_name(self):
-        """Verify -dynamiclib, -shared, and @rpath install name are specified."""
+        """Verify -dynamiclib and @rpath install name are specified."""
         self.assertIn("-dynamiclib", self.makefile)
         self.assertIn("-install_name @rpath/$(TARGET)", self.makefile)
         self.assertIn("-install_name @rpath/$TARGET", self.build_sh)

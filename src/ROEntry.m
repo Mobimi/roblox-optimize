@@ -40,6 +40,7 @@ static void ROOptimizerEntry(void) {
                                                       object:nil
                                                        queue:[NSOperationQueue mainQueue]
                                                   usingBlock:^(NSNotification *note) {
+        (void)note;
         ROInitializeUI();
     }];
 

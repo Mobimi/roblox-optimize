@@ -9,7 +9,6 @@ TARGET_TRIPLE = arm64-apple-ios14.0
 
 CFLAGS = -target $(TARGET_TRIPLE) \
          -arch $(ARCH) \
-         -shared \
          -dynamiclib \
          -fobjc-arc \
          -O2 \
