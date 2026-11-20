@@ -1,55 +1,58 @@
-ARCHS = arm64 arm64e
-TARGET = iphone:clang:16.5:16.0
+TARGET = RobloxOptimizer.dylib
+BUILD_DIR = build
+CC ?= xcrun -sdk iphoneos clang
+LDID ?= ldid
 
-include $(THEOS)/makefiles/common.mk
+SDK_PATH ?= $(shell xcrun --sdk iphoneos --show-sdk-path 2>/dev/null)
+ARCH = arm64
+TARGET_TRIPLE = arm64-apple-ios14.0
 
-TWEAK_NAME = GameOptimizer
+CFLAGS = -target $(TARGET_TRIPLE) \
+         -arch $(ARCH) \
+         -shared \
+         -dynamiclib \
+         -fobjc-arc \
+         -O2 \
+         -Wall \
+         -Wextra \
+         -install_name @rpath/$(TARGET) \
+         -Isrc
 
-GameOptimizer_FILES = \
-	Core/Constructor.mm \
-	Core/MetalHooks.mm \
-	Core/RenderScale.mm \
-	Core/MSAA_FXAA.mm \
-	Core/ShadowPass.mm \
-	Core/Framebuffer.mm \
-	Core/MetalFX.mm \
-	Core/FPSCap.mm \
-	Core/ThreadBoost.mm \
-	Core/Settings.mm \
-	UI/OverlayWindow.mm \
-	UI/MainPanel.mm \
-	UI/SliderCell.mm \
-	UI/ToggleCell.mm
+ifneq ($(SDK_PATH),)
+CFLAGS += -isysroot $(SDK_PATH)
+endif
 
-GameOptimizer_FRAMEWORKS = \
-	UIKit \
-	Metal \
-	QuartzCore \
-	Foundation \
-	MetalFX \
-	MetalKit
+LDFLAGS = -framework Foundation \
+          -framework UIKit \
+          -framework Metal \
+          -framework QuartzCore
 
-GameOptimizer_PRIVATE_FRAMEWORKS = \
-	IOKit
+SRCS = src/ROEntry.m \
+       src/Config/ROConfig.m \
+       src/Hooks/ROMetalHooks.m \
+       src/Hooks/ROResolutionHooks.m \
+       src/FFlags/ROFastFlags.m \
+       src/UI/ROPassThroughWindow.m \
+       src/UI/ROFloatingButton.m \
+       src/UI/ROMenuViewController.m
 
-GameOptimizer_CFLAGS = \
-	-fobjc-arc \
-	-O2 \
-	-DIOS_TARGET=1 \
-	-Wall \
-	-fno-modules \
-	-fno-cxx-modules \
-	-fno-implicit-modules \
-	-fno-implicit-module-maps \
-	-ICore
+.PHONY: all clean sign
 
-GameOptimizer_LDFLAGS = \
-	-lc++ \
-	-framework CoreGraphics
+all: $(BUILD_DIR)/$(TARGET) sign
 
-GameOptimizer_USE_SUBSTRATE = 0
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-include $(THEOS)/makefiles/tweak.mk
+$(BUILD_DIR)/$(TARGET): $(SRCS) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(SRCS)
 
-after-install::
-	install.exec "killall -9 SpringBoard"
+sign: $(BUILD_DIR)/$(TARGET)
+	@if command -v $(LDID) >/dev/null 2>&1; then \
+		$(LDID) -S $(BUILD_DIR)/$(TARGET); \
+		echo "Ad-hoc codesign complete: $(BUILD_DIR)/$(TARGET)"; \
+	else \
+		echo "Warning: ldid not found. Output binary is unsigned."; \
+	fi
+
+clean:
+	rm -rf $(BUILD_DIR)

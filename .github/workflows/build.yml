@@ -1,63 +1,83 @@
-name: Build Roblox Optimize Dylib
+name: Build Roblox iOS Optimizer Dylib
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build & Codesign arm64 Dylib
     runs-on: macos-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Select Xcode Version
         run: |
-          brew install ldid xz make
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          echo "Xcode Developer path:"
+          xcode-select -p
+          xcrun --sdk iphoneos --show-sdk-path
 
-      - name: Install Theos
+      - name: Install Dependencies (ldid)
         run: |
-          git clone --recursive https://github.com/theos/theos.git $THEOS
-          cd $THEOS
-          git submodule update --init --recursive
-        env:
-          THEOS: ${{ github.workspace }}/theos
+          brew install ldid
+          which ldid
 
-      - name: Install iOS SDK
+      - name: Compile RobloxOptimizer.dylib
         run: |
-          git clone --depth=1 https://github.com/theos/sdks.git /tmp/theos-sdks
-          cp -r /tmp/theos-sdks/iPhoneOS16.5.sdk $THEOS/sdks/
-        env:
-          THEOS: ${{ github.workspace }}/theos
+          mkdir -p build
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
 
-      - name: Clean
+          xcrun -sdk iphoneos clang \
+            -target arm64-apple-ios14.0 \
+            -arch arm64 \
+            -shared \
+            -dynamiclib \
+            -fobjc-arc \
+            -O2 \
+            -Wall \
+            -Wextra \
+            -isysroot "${SDK_PATH}" \
+            -install_name @rpath/RobloxOptimizer.dylib \
+            -framework Foundation \
+            -framework UIKit \
+            -framework Metal \
+            -framework QuartzCore \
+            -Isrc \
+            -o build/RobloxOptimizer.dylib \
+            src/ROEntry.m \
+            src/Config/ROConfig.m \
+            src/Hooks/ROMetalHooks.m \
+            src/Hooks/ROResolutionHooks.m \
+            src/FFlags/ROFastFlags.m \
+            src/UI/ROPassThroughWindow.m \
+            src/UI/ROFloatingButton.m \
+            src/UI/ROMenuViewController.m
+
+      - name: Pseudo-Ad-Hoc Codesign with ldid
         run: |
-          rm -rf .theos packages
+          ldid -S build/RobloxOptimizer.dylib
+          file build/RobloxOptimizer.dylib
+          otool -L build/RobloxOptimizer.dylib
 
-      - name: Build Dylib
-        run: |
-          export THEOS=${{ github.workspace }}/theos
-          export ARCHS="arm64 arm64e"
-          export TARGET="iphone:clang:16.5:16.0"
-          export SDKVERSION=16.5
-          gmake package FINALPACKAGE=1 2>&1
-        env:
-          THEOS: ${{ github.workspace }}/theos
-
-      - name: Find output files
-        run: |
-          echo "=== packages/ ==="
-          ls -la packages/ || echo "No packages dir"
-          echo "=== .theos dylib ==="
-          find .theos -name "*.dylib" 2>/dev/null || echo "No dylib found"
-
-      - name: Upload Dylib
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RobloxOptimize-dylib
-          path: |
-            .theos/obj/**/*.dylib
-          retention-days: 7
-          if-no-files-found: warn
+          name: RobloxOptimizer-dylib
+          path: build/RobloxOptimizer.dylib
+          if-no-files-found: error
+
+      - name: Create Release Asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/RobloxOptimizer.dylib
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

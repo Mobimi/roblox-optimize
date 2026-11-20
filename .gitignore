@@ -1,0 +1,17 @@
+# Build directories
+build/
+*.o
+*.dylib
+*.a
+a.out
+
+# macOS metadata
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# IDE
+.vscode/
+.idea/
