@@ -17,6 +17,9 @@
 @property (nonatomic, strong) UIView *subControlsContainer;
 @property (nonatomic, strong) UIButton *saveExitButton;
 @property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, strong) UISelectionFeedbackGenerator *selectionFeedback;
+@property (nonatomic, strong) UIImpactFeedbackGenerator *impactLight;
+@property (nonatomic, strong) UIImpactFeedbackGenerator *impactMedium;
 
 @end
 
@@ -26,6 +29,18 @@
     [super viewDidLoad];
     [self setupViewHierarchy];
     [self loadConfigIntoUI];
+
+    // Initialize cached haptic feedback generators
+    if (@available(iOS 10.0, *)) {
+        if ([UISelectionFeedbackGenerator class]) {
+            self.selectionFeedback = [[UISelectionFeedbackGenerator alloc] init];
+            [self.selectionFeedback prepare];
+        }
+        if ([UIImpactFeedbackGenerator class]) {
+            self.impactLight = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+            self.impactMedium = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+        }
+    }
 }
 
 - (void)setupViewHierarchy {
@@ -44,11 +59,22 @@
 
     // Dialog card with frosted glass styling and rounded corners
     self.dialogCard = [[UIView alloc] init];
-    self.dialogCard.backgroundColor = [UIColor colorWithRed:0.07 green:0.10 blue:0.16 alpha:0.96]; // #111827
-    self.dialogCard.layer.cornerRadius = 16.0;
-    self.dialogCard.layer.borderColor = [UIColor colorWithRed:0.20 green:0.26 blue:0.35 alpha:0.85].CGColor;
+    self.dialogCard.backgroundColor = [UIColor colorWithRed:0.08 green:0.11 blue:0.17 alpha:0.68]; // Apple Liquid Glass translucent tint
+    self.dialogCard.layer.cornerRadius = 20.0;
+    if (@available(iOS 13.0, *)) {
+        if ([self.dialogCard.layer respondsToSelector:@selector(setCornerCurve:)]) {
+            self.dialogCard.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+    }
+    // Specular highlight rim border
+    self.dialogCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
     self.dialogCard.layer.borderWidth = 1.0;
-    self.dialogCard.layer.masksToBounds = YES;
+    // Ambient luminescence glow shadow
+    self.dialogCard.layer.shadowColor = [UIColor colorWithRed:0.15 green:0.45 blue:0.95 alpha:0.35].CGColor;
+    self.dialogCard.layer.shadowOffset = CGSizeMake(0, 8);
+    self.dialogCard.layer.shadowRadius = 24.0;
+    self.dialogCard.layer.shadowOpacity = 0.55;
+    self.dialogCard.layer.masksToBounds = NO;
     self.dialogCard.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.dialogCard];
 
@@ -57,6 +83,13 @@
     UIVisualEffectView *cardBlurView = [[UIVisualEffectView alloc] initWithEffect:cardBlur];
     cardBlurView.frame = self.dialogCard.bounds;
     cardBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    cardBlurView.layer.cornerRadius = 20.0;
+    cardBlurView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        if ([cardBlurView.layer respondsToSelector:@selector(setCornerCurve:)]) {
+            cardBlurView.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+    }
     cardBlurView.userInteractionEnabled = NO;
     [self.dialogCard addSubview:cardBlurView];
 
@@ -122,6 +155,7 @@
     self.scaleTextField.font = [UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightRegular];
     self.scaleTextField.keyboardType = UIKeyboardTypeDecimalPad;
     self.scaleTextField.delegate = self;
+    [self.scaleTextField addTarget:self action:@selector(textFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
     self.scaleTextField.translatesAutoresizingMaskIntoConstraints = NO;
 
     // Keyboard toolbar with Done button
@@ -191,13 +225,15 @@
     self.fpsControl.translatesAutoresizingMaskIntoConstraints = NO;
     [self.subControlsContainer addSubview:self.fpsControl];
 
-    // Action Buttons
+    // Action Buttons with refined Liquid Glass styling
     self.saveExitButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.saveExitButton setTitle:@"Save & Exit" forState:UIControlStateNormal];
     [self.saveExitButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.saveExitButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
-    self.saveExitButton.backgroundColor = [UIColor colorWithRed:0.86 green:0.24 blue:0.24 alpha:1.0]; // Red
-    self.saveExitButton.layer.cornerRadius = 8.0;
+    self.saveExitButton.backgroundColor = [UIColor colorWithRed:0.86 green:0.24 blue:0.24 alpha:0.90]; // Red
+    self.saveExitButton.layer.cornerRadius = 10.0;
+    self.saveExitButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.25].CGColor;
+    self.saveExitButton.layer.borderWidth = 0.5;
     [self.saveExitButton addTarget:self action:@selector(saveAndExitTapped) forControlEvents:UIControlEventTouchUpInside];
     self.saveExitButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.saveExitButton];
@@ -206,11 +242,20 @@
     [self.closeButton setTitle:@"Close Menu" forState:UIControlStateNormal];
     [self.closeButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     self.closeButton.titleLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
-    self.closeButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.26 blue:0.35 alpha:1.0];
-    self.closeButton.layer.cornerRadius = 8.0;
+    self.closeButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.26 blue:0.35 alpha:0.85];
+    self.closeButton.layer.cornerRadius = 10.0;
+    self.closeButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
+    self.closeButton.layer.borderWidth = 0.5;
     [self.closeButton addTarget:self action:@selector(closeTapped) forControlEvents:UIControlEventTouchUpInside];
     self.closeButton.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.closeButton];
+
+    if (@available(iOS 13.0, *)) {
+        if ([self.saveExitButton.layer respondsToSelector:@selector(setCornerCurve:)]) {
+            self.saveExitButton.layer.cornerCurve = kCACornerCurveContinuous;
+            self.closeButton.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+    }
 
     // Auto Layout
     [NSLayoutConstraint activateConstraints:@[
@@ -301,7 +346,9 @@
 
 - (void)presetChanged:(UISegmentedControl *)sender {
     if (@available(iOS 10.0, *)) {
-        if ([UISelectionFeedbackGenerator class]) {
+        if (self.selectionFeedback) {
+            [self.selectionFeedback selectionChanged];
+        } else if ([UISelectionFeedbackGenerator class]) {
             UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
             [feedback selectionChanged];
         }
@@ -313,17 +360,28 @@
     float rounded = roundf(sender.value * 100.0f) / 100.0f;
     self.scaleTextField.text = [NSString stringWithFormat:@"%.2f", (double)rounded];
     if (@available(iOS 10.0, *)) {
-        if ([UISelectionFeedbackGenerator class]) {
+        if (self.selectionFeedback) {
+            [self.selectionFeedback selectionChanged];
+        } else if ([UISelectionFeedbackGenerator class]) {
             UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
             [feedback selectionChanged];
         }
     }
 }
 
+- (void)textFieldDidChange:(UITextField *)textField {
+    float val = [textField.text floatValue];
+    if (val >= 0.25f && val <= 3.0f) {
+        [self.scaleSlider setValue:val animated:YES];
+    }
+}
+
 - (void)toggleChanged:(UISwitch *)sender {
     (void)sender;
     if (@available(iOS 10.0, *)) {
-        if ([UIImpactFeedbackGenerator class]) {
+        if (self.impactLight) {
+            [self.impactLight impactOccurred];
+        } else if ([UIImpactFeedbackGenerator class]) {
             UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
             [feedback impactOccurred];
         }
@@ -333,7 +391,9 @@
 - (void)fpsChanged:(UISegmentedControl *)sender {
     (void)sender;
     if (@available(iOS 10.0, *)) {
-        if ([UISelectionFeedbackGenerator class]) {
+        if (self.selectionFeedback) {
+            [self.selectionFeedback selectionChanged];
+        } else if ([UISelectionFeedbackGenerator class]) {
             UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
             [feedback selectionChanged];
         }
@@ -344,6 +404,8 @@
     float val = [textField.text floatValue];
     if (val >= 0.25f && val <= 3.0f) {
         self.scaleSlider.value = val;
+    } else {
+        self.scaleTextField.text = [NSString stringWithFormat:@"%.2f", (double)self.scaleSlider.value];
     }
 }
 
@@ -406,7 +468,9 @@
     }
 
     if (@available(iOS 10.0, *)) {
-        if ([UIImpactFeedbackGenerator class]) {
+        if (self.impactMedium) {
+            [self.impactMedium impactOccurred];
+        } else if ([UIImpactFeedbackGenerator class]) {
             UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
             [feedback impactOccurred];
         }
@@ -449,7 +513,9 @@
 
 - (void)closeTapped {
     if (@available(iOS 10.0, *)) {
-        if ([UIImpactFeedbackGenerator class]) {
+        if (self.impactLight) {
+            [self.impactLight impactOccurred];
+        } else if ([UIImpactFeedbackGenerator class]) {
             UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
             [feedback impactOccurred];
         }
@@ -478,8 +544,10 @@
 }
 
 - (void)dismissMenu {
-    [UIView animateWithDuration:0.20
+    [UIView animateWithDuration:0.25
                           delay:0
+         usingSpringWithDamping:0.85
+          initialSpringVelocity:0.5
                         options:UIViewAnimationOptionCurveEaseIn
                      animations:^{
         self.view.alpha = 0.0;

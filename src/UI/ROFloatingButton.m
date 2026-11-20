@@ -12,6 +12,8 @@
 @property (nonatomic, strong) UITapGestureRecognizer *tapGesture;
 @property (nonatomic, strong) UILabel *iconLabel;
 @property (nonatomic, assign) BOOL isDragging;
+@property (nonatomic, strong) UIImpactFeedbackGenerator *impactLight;
+@property (nonatomic, strong) UIImpactFeedbackGenerator *impactMedium;
 @end
 
 @implementation ROFloatingButton
@@ -28,14 +30,14 @@
     self.backgroundColor = [UIColor clearColor];
     self.layer.cornerRadius = self.bounds.size.width / 2.0;
     self.layer.masksToBounds = NO;
-    self.layer.borderColor = [UIColor colorWithRed:0.23 green:0.51 blue:0.96 alpha:0.90].CGColor; // Blue accent
+    self.layer.borderColor = [UIColor colorWithRed:0.35 green:0.62 blue:0.98 alpha:0.90].CGColor; // Cyan-blue specular border
     self.layer.borderWidth = 1.5;
 
-    // Refined drop shadow & ambient glow
-    self.layer.shadowColor = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.55].CGColor;
-    self.layer.shadowOpacity = 0.55;
+    // Apple Liquid Glass ambient luminescence glow shadow
+    self.layer.shadowColor = [UIColor colorWithRed:0.20 green:0.55 blue:1.0 alpha:0.50].CGColor;
+    self.layer.shadowOpacity = 0.60;
     self.layer.shadowOffset = CGSizeMake(0, 4);
-    self.layer.shadowRadius = 8.0;
+    self.layer.shadowRadius = 10.0;
 
     // Modern Frosted Glass Blur Background
     UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleDark];
@@ -47,9 +49,9 @@
     blurView.userInteractionEnabled = NO;
     [self addSubview:blurView];
 
-    // Translucent dark tint overlay inside blur view
+    // Translucent dark tint overlay inside blur view (Liquid Glass)
     UIView *tintView = [[UIView alloc] initWithFrame:self.bounds];
-    tintView.backgroundColor = [UIColor colorWithRed:0.12 green:0.16 blue:0.23 alpha:0.65];
+    tintView.backgroundColor = [UIColor colorWithRed:0.10 green:0.14 blue:0.22 alpha:0.48];
     tintView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     tintView.layer.cornerRadius = self.bounds.size.width / 2.0;
     tintView.layer.masksToBounds = YES;
@@ -64,6 +66,14 @@
     self.iconLabel.userInteractionEnabled = NO;
     [self addSubview:self.iconLabel];
 
+    // Initialize cached haptic feedback generators
+    if (@available(iOS 10.0, *)) {
+        if ([UIImpactFeedbackGenerator class]) {
+            self.impactLight = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+            self.impactMedium = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+        }
+    }
+
     self.panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
     [self addGestureRecognizer:self.panGesture];
 
@@ -76,7 +86,9 @@
     (void)gesture;
     if (self.isDragging) return;
     if (@available(iOS 10.0, *)) {
-        if ([UIImpactFeedbackGenerator class]) {
+        if (self.impactMedium) {
+            [self.impactMedium impactOccurred];
+        } else if ([UIImpactFeedbackGenerator class]) {
             UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
             [feedback prepare];
             [feedback impactOccurred];
@@ -94,23 +106,35 @@
     if (pan.state == UIGestureRecognizerStateBegan) {
         self.isDragging = YES;
         if (@available(iOS 10.0, *)) {
-            if ([UIImpactFeedbackGenerator class]) {
+            if (self.impactLight) {
+                [self.impactLight impactOccurred];
+            } else if ([UIImpactFeedbackGenerator class]) {
                 UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
                 [feedback prepare];
                 [feedback impactOccurred];
             }
         }
-        [UIView animateWithDuration:0.15 animations:^{
+        [UIView animateWithDuration:0.25
+                              delay:0
+             usingSpringWithDamping:0.75
+              initialSpringVelocity:0.5
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
             self.transform = CGAffineTransformMakeScale(1.10, 1.10);
-        }];
+        } completion:nil];
     } else if (pan.state == UIGestureRecognizerStateChanged) {
         CGPoint translation = [pan translationInView:superview];
         self.center = CGPointMake(self.center.x + translation.x, self.center.y + translation.y);
         [pan setTranslation:CGPointZero inView:superview];
     } else if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled) {
-        [UIView animateWithDuration:0.15 animations:^{
+        [UIView animateWithDuration:0.25
+                              delay:0
+             usingSpringWithDamping:0.75
+              initialSpringVelocity:0.5
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
             self.transform = CGAffineTransformIdentity;
-        }];
+        } completion:nil];
 
         UIEdgeInsets insets = UIEdgeInsetsZero;
         if (@available(iOS 11.0, *)) {
@@ -137,7 +161,9 @@
             (void)finished;
             self.isDragging = NO;
             if (@available(iOS 10.0, *)) {
-                if ([UIImpactFeedbackGenerator class]) {
+                if (self.impactLight) {
+                    [self.impactLight impactOccurred];
+                } else if ([UIImpactFeedbackGenerator class]) {
                     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
                     [feedback impactOccurred];
                 }

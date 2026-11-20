@@ -77,7 +77,8 @@
         if (@available(iOS 13.0, *)) {
             if (!sharedInstance.windowScene) {
                 // If scene was not yet foreground active, attach dynamically upon scene activation
-                [[NSNotificationCenter defaultCenter] addObserverForName:UISceneDidActivateNotification
+                __block id<NSObject> sceneObserver = nil;
+                sceneObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UISceneDidActivateNotification
                                                                   object:nil
                                                                    queue:[NSOperationQueue mainQueue]
                                                               usingBlock:^(NSNotification *note) {
@@ -85,6 +86,10 @@
                         if ([note.object isKindOfClass:[UIWindowScene class]] && !sharedInstance.windowScene) {
                             sharedInstance.windowScene = (UIWindowScene *)note.object;
                             sharedInstance.hidden = NO;
+                            if (sceneObserver) {
+                                [[NSNotificationCenter defaultCenter] removeObserver:sceneObserver];
+                                sceneObserver = nil;
+                            }
                         }
                     }
                 }];

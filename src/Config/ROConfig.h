@@ -18,13 +18,13 @@ typedef NS_ENUM(NSInteger, ROPresetMode) {
 
 @interface ROConfig : NSObject
 
-@property (nonatomic, assign) ROPresetMode presetMode;
-@property (nonatomic, assign) CGFloat resolutionScale;
-@property (nonatomic, assign) BOOL textureClampingEnabled;
-@property (nonatomic, assign) NSUInteger maxTextureDimension;
-@property (nonatomic, assign) BOOL disableShadows;
-@property (nonatomic, assign) BOOL disablePostFX;
-@property (nonatomic, assign) NSInteger targetFPS; // 30, 60, 0 (Unlocked)
+@property (atomic, assign) ROPresetMode presetMode;
+@property (atomic, assign) CGFloat resolutionScale;
+@property (atomic, assign) BOOL textureClampingEnabled;
+@property (atomic, assign) NSUInteger maxTextureDimension;
+@property (atomic, assign) BOOL disableShadows;
+@property (atomic, assign) BOOL disablePostFX;
+@property (atomic, assign) NSInteger targetFPS; // 30, 60, 0 (Unlocked)
 
 + (instancetype)sharedConfig;
 

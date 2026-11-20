@@ -36,28 +36,66 @@ static NSString * const kROConfigTargetFPSKey           = @"RO_TargetFPS";
 }
 
 - (void)applyPreset:(ROPresetMode)mode {
-    _presetMode = mode;
-    switch (mode) {
-        case ROPresetModePotato:
-            _resolutionScale = 0.50f;
-            _textureClampingEnabled = YES;
-            _maxTextureDimension = 256;
-            _disableShadows = YES;
-            _disablePostFX = YES;
-            _targetFPS = 60;
-            break;
+    @synchronized(self) {
+        _presetMode = mode;
+        switch (mode) {
+            case ROPresetModePotato:
+                _resolutionScale = 0.50f;
+                _textureClampingEnabled = YES;
+                _maxTextureDimension = 256;
+                _disableShadows = YES;
+                _disablePostFX = YES;
+                _targetFPS = 60;
+                break;
 
-        case ROPresetModeBalanced:
-            _resolutionScale = 1.0f;
-            _textureClampingEnabled = YES;
-            _maxTextureDimension = 512;
-            _disableShadows = YES;
-            _disablePostFX = NO;
-            _targetFPS = 60;
-            break;
+            case ROPresetModeBalanced:
+                _resolutionScale = 1.0f;
+                _textureClampingEnabled = YES;
+                _maxTextureDimension = 512;
+                _disableShadows = YES;
+                _disablePostFX = NO;
+                _targetFPS = 60;
+                break;
 
-        case ROPresetModeManual:
-            // In manual mode, validate existing bounds without overwriting custom choices
+            case ROPresetModeManual:
+                // In manual mode, validate existing bounds without overwriting custom choices
+                if (_resolutionScale < 0.25f || _resolutionScale > 3.0f) {
+                    _resolutionScale = 1.0f;
+                }
+                if (_maxTextureDimension == 0) {
+                    _maxTextureDimension = 512;
+                }
+                if (_targetFPS != 30 && _targetFPS != 60 && _targetFPS != 0) {
+                    _targetFPS = 60;
+                }
+                break;
+        }
+    }
+}
+
+- (void)load {
+    @synchronized(self) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if (![defaults boolForKey:kROConfigInitializedKey]) {
+            // First run defaults: Balanced mode
+            [self applyPreset:ROPresetModeBalanced];
+            [self save];
+            return;
+        }
+
+        _presetMode = (ROPresetMode)[defaults integerForKey:kROConfigPresetModeKey];
+        _resolutionScale = (CGFloat)[defaults doubleForKey:kROConfigResolutionScaleKey];
+        _textureClampingEnabled = [defaults boolForKey:kROConfigTextureClampingKey];
+        _maxTextureDimension = (NSUInteger)[defaults integerForKey:kROConfigMaxTextureDimensionKey];
+        _disableShadows = [defaults boolForKey:kROConfigDisableShadowsKey];
+        _disablePostFX = [defaults boolForKey:kROConfigDisablePostFXKey];
+        _targetFPS = [defaults integerForKey:kROConfigTargetFPSKey];
+
+        // Ensure sanity of loaded properties
+        if (_presetMode == ROPresetModePotato || _presetMode == ROPresetModeBalanced) {
+            // Re-enforce preset values in case defaults were corrupted
+            [self applyPreset:_presetMode];
+        } else {
             if (_resolutionScale < 0.25f || _resolutionScale > 3.0f) {
                 _resolutionScale = 1.0f;
             }
@@ -67,55 +105,23 @@ static NSString * const kROConfigTargetFPSKey           = @"RO_TargetFPS";
             if (_targetFPS != 30 && _targetFPS != 60 && _targetFPS != 0) {
                 _targetFPS = 60;
             }
-            break;
-    }
-}
-
-- (void)load {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if (![defaults boolForKey:kROConfigInitializedKey]) {
-        // First run defaults: Balanced mode
-        [self applyPreset:ROPresetModeBalanced];
-        [self save];
-        return;
-    }
-
-    _presetMode = (ROPresetMode)[defaults integerForKey:kROConfigPresetModeKey];
-    _resolutionScale = (CGFloat)[defaults doubleForKey:kROConfigResolutionScaleKey];
-    _textureClampingEnabled = [defaults boolForKey:kROConfigTextureClampingKey];
-    _maxTextureDimension = (NSUInteger)[defaults integerForKey:kROConfigMaxTextureDimensionKey];
-    _disableShadows = [defaults boolForKey:kROConfigDisableShadowsKey];
-    _disablePostFX = [defaults boolForKey:kROConfigDisablePostFXKey];
-    _targetFPS = [defaults integerForKey:kROConfigTargetFPSKey];
-
-    // Ensure sanity of loaded properties
-    if (_presetMode == ROPresetModePotato || _presetMode == ROPresetModeBalanced) {
-        // Re-enforce preset values in case defaults were corrupted
-        [self applyPreset:_presetMode];
-    } else {
-        if (_resolutionScale < 0.25f || _resolutionScale > 3.0f) {
-            _resolutionScale = 1.0f;
-        }
-        if (_maxTextureDimension == 0) {
-            _maxTextureDimension = 512;
-        }
-        if (_targetFPS != 30 && _targetFPS != 60 && _targetFPS != 0) {
-            _targetFPS = 60;
         }
     }
 }
 
 - (void)save {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setBool:YES forKey:kROConfigInitializedKey];
-    [defaults setInteger:(NSInteger)_presetMode forKey:kROConfigPresetModeKey];
-    [defaults setDouble:(double)_resolutionScale forKey:kROConfigResolutionScaleKey];
-    [defaults setBool:_textureClampingEnabled forKey:kROConfigTextureClampingKey];
-    [defaults setInteger:(NSInteger)_maxTextureDimension forKey:kROConfigMaxTextureDimensionKey];
-    [defaults setBool:_disableShadows forKey:kROConfigDisableShadowsKey];
-    [defaults setBool:_disablePostFX forKey:kROConfigDisablePostFXKey];
-    [defaults setInteger:_targetFPS forKey:kROConfigTargetFPSKey];
-    [defaults synchronize];
+    @synchronized(self) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [defaults setBool:YES forKey:kROConfigInitializedKey];
+        [defaults setInteger:(NSInteger)_presetMode forKey:kROConfigPresetModeKey];
+        [defaults setDouble:(double)_resolutionScale forKey:kROConfigResolutionScaleKey];
+        [defaults setBool:_textureClampingEnabled forKey:kROConfigTextureClampingKey];
+        [defaults setInteger:(NSInteger)_maxTextureDimension forKey:kROConfigMaxTextureDimensionKey];
+        [defaults setBool:_disableShadows forKey:kROConfigDisableShadowsKey];
+        [defaults setBool:_disablePostFX forKey:kROConfigDisablePostFXKey];
+        [defaults setInteger:_targetFPS forKey:kROConfigTargetFPSKey];
+        [defaults synchronize];
+    }
 }
 
 @end

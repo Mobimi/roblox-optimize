@@ -54,6 +54,10 @@ static void ROOptimizerEntry(void) {
         if ([UIApplication sharedApplication].keyWindow != nil ||
             [UIApplication sharedApplication].windows.count > 0) {
             ROInitializeUI();
+            if (launchObserver) {
+                [[NSNotificationCenter defaultCenter] removeObserver:launchObserver];
+                launchObserver = nil;
+            }
         }
     });
 }
