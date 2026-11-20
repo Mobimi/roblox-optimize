@@ -4,6 +4,7 @@
 #import <stddef.h>
 #import <stdint.h>
 #import <stdbool.h>
+#import <objc/objc.h>
 
 #ifndef _OBJC_OBJC_H_
 typedef struct objc_class *Class;

@@ -9,47 +9,86 @@ Aggregates all 4 Tiers:
 Total: 149 Automated Tests
 """
 
+import sys
 import unittest
 from pathlib import Path
 
+# Ensure repo root is on sys.path
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 # Import all tier test modules
-from tests.test_tier1_features import (
-    TestFeature1RepoCleanliness,
-    TestFeature2NoHardcodedOffsets,
-    TestFeature3ConfigPresets,
-    TestFeature4MetalTextureClamping,
-    TestFeature5ResolutionScalingHook,
-    TestFeature6FastFlagsGeneration,
-    TestFeature7DraggableFABOverlay,
-    TestFeature8ModalConfigPopup,
-    TestFeature9ResolutionInputAndCleanExit,
-    TestFeature10MakefileAndBuildScript,
-    TestFeature11GitHubActionsWorkflow,
-    TestFeature12GitRemoteAndBranch,
-)
-
-from tests.test_tier2_boundaries import (
-    TestB1TextureClampingBoundaries,
-    TestB2MipmapCalculationBoundaries,
-    TestB3SafetyExclusionsBoundaries,
-    TestB4ResolutionScaleBoundaries,
-    TestB5FastFlagsSandboxPathsBoundaries,
-    TestB6TargetFPSBoundaries,
-    TestB7TouchPassthroughBoundaries,
-    TestB8PresetModelCorruptionBoundaries,
-)
-
-from tests.test_tier3_pairwise import (
-    TestPairwisePresetsAndFastFlags,
-    TestPairwiseStateTransitions,
-    TestPairwiseGraphicsPipeline,
-    TestPairwiseUIAndInteraction,
-    TestPairwiseBuildAndCI,
-)
-
-from tests.test_tier4_scenarios import (
-    TestTier4RealWorldScenarios,
-)
+try:
+    from tests.test_tier1_features import (
+        TestFeature1RepoCleanliness,
+        TestFeature2NoHardcodedOffsets,
+        TestFeature3ConfigPresets,
+        TestFeature4MetalTextureClamping,
+        TestFeature5ResolutionScalingHook,
+        TestFeature6FastFlagsGeneration,
+        TestFeature7DraggableFABOverlay,
+        TestFeature8ModalConfigPopup,
+        TestFeature9ResolutionInputAndCleanExit,
+        TestFeature10MakefileAndBuildScript,
+        TestFeature11GitHubActionsWorkflow,
+        TestFeature12GitRemoteAndBranch,
+    )
+    from tests.test_tier2_boundaries import (
+        TestB1TextureClampingBoundaries,
+        TestB2MipmapCalculationBoundaries,
+        TestB3SafetyExclusionsBoundaries,
+        TestB4ResolutionScaleBoundaries,
+        TestB5FastFlagsSandboxPathsBoundaries,
+        TestB6TargetFPSBoundaries,
+        TestB7TouchPassthroughBoundaries,
+        TestB8PresetModelCorruptionBoundaries,
+    )
+    from tests.test_tier3_pairwise import (
+        TestPairwisePresetsAndFastFlags,
+        TestPairwiseStateTransitions,
+        TestPairwiseGraphicsPipeline,
+        TestPairwiseUIAndInteraction,
+        TestPairwiseBuildAndCI,
+    )
+    from tests.test_tier4_scenarios import (
+        TestTier4RealWorldScenarios,
+    )
+except ImportError:
+    from test_tier1_features import (
+        TestFeature1RepoCleanliness,
+        TestFeature2NoHardcodedOffsets,
+        TestFeature3ConfigPresets,
+        TestFeature4MetalTextureClamping,
+        TestFeature5ResolutionScalingHook,
+        TestFeature6FastFlagsGeneration,
+        TestFeature7DraggableFABOverlay,
+        TestFeature8ModalConfigPopup,
+        TestFeature9ResolutionInputAndCleanExit,
+        TestFeature10MakefileAndBuildScript,
+        TestFeature11GitHubActionsWorkflow,
+        TestFeature12GitRemoteAndBranch,
+    )
+    from test_tier2_boundaries import (
+        TestB1TextureClampingBoundaries,
+        TestB2MipmapCalculationBoundaries,
+        TestB3SafetyExclusionsBoundaries,
+        TestB4ResolutionScaleBoundaries,
+        TestB5FastFlagsSandboxPathsBoundaries,
+        TestB6TargetFPSBoundaries,
+        TestB7TouchPassthroughBoundaries,
+        TestB8PresetModelCorruptionBoundaries,
+    )
+    from test_tier3_pairwise import (
+        TestPairwisePresetsAndFastFlags,
+        TestPairwiseStateTransitions,
+        TestPairwiseGraphicsPipeline,
+        TestPairwiseUIAndInteraction,
+        TestPairwiseBuildAndCI,
+    )
+    from test_tier4_scenarios import (
+        TestTier4RealWorldScenarios,
+    )
 
 
 TIER_TEST_CLASSES = {

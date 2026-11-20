@@ -6,6 +6,7 @@
 //
 
 #import "ROMenuViewController.h"
+#import <stdlib.h>
 #import "../Config/ROConfig.h"
 #import "../FFlags/ROFastFlags.h"
 
